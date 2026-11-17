@@ -176,6 +176,18 @@ canvas.pointer { cursor: pointer; }
 .logbox h3 { margin: 0; padding: 3px 8px; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; color: #7f8ea6; cursor: pointer; display: flex; justify-content: space-between; font-weight: 400; }
 .logbox .log { height: 150px; padding: 0 8px 6px; font-size: 15px; }
 .logbox.min .log { display: none; }
+.readbox { left: auto; right: 8px; width: 400px; }
+.readbox h3 b { color: #ff8a2a; font-weight: 400; }
+.readbox .rb { max-height: 170px; overflow: auto; padding: 0 8px 6px; font-size: 14px; color: #cdbfb2; }
+.readbox.min .rb { display: none; }
+.readbox .hab { font-size: 13px; color: #9aa6b8; margin: 2px 0 4px; }
+.readbox .hab a { color: #8fe3ff; }
+.readbox table { width: 100%; border-collapse: collapse; }
+.readbox th { text-align: left; font-weight: 400; color: #7f8ea6; font-size: 12px; border-bottom: 1px solid #1d2635; }
+.readbox td { padding: 1px 4px 1px 0; border-bottom: 1px solid #141b27; white-space: nowrap; }
+.readbox td.ok { color: #ff8a2a; }
+.readbox td.no { color: #6b7480; }
+.readbox .g { color: #8fe3ff; } .readbox .b { color: #ffb07a; }
 </style>
 </head>
 <body>
@@ -196,6 +208,7 @@ canvas.pointer { cursor: pointer; }
     <div class="turnbig" id="turnLbl"></div>
     <div class="tip" id="tip">Click a fighter to read their passives</div>
     <div class="insp" id="insp" hidden></div>
+    <div class="logbox readbox" id="readBox"><h3 id="readHead"><span>Your moves · <b id="readSum">Learning…</b></span><span id="readTog">&minus;</span></h3><div class="rb" id="reads"></div></div>
     <div class="logbox" id="logBox"><h3 id="logHead"><span>Fight log</span><span id="logTog">&minus;</span></h3><div class="log" id="log"></div></div>
   </div>
   <div class="dock" id="bar">
@@ -342,7 +355,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 function fresh(key, x) { return { key, x, y: 0, dir: key === "lulu" ? 1 : -1, hp: TUNE.hp, san: 0, light: TUNE.lightStart, stag: false, chill: false, guard: false, combo: 0, pose: "idle" }; }
 function newGame() {
   G = { turn: 1, f: { lulu: fresh("lulu", 440), yeti: fresh("yeti", 760) }, log: [], over: false,
-        history: [], stats: { counters: { lulu: 0, yeti: 0 }, bestCombo: { lulu: 0, yeti: 0 }, scared: { lulu: 0, yeti: 0 }, dmg: { lulu: 0, yeti: 0 }, guarded: { lulu: 0, yeti: 0 } } };
+        history: [], reads: [], lastLulu: null, stats: { counters: { lulu: 0, yeti: 0 }, bestCombo: { lulu: 0, yeti: 0 }, scared: { lulu: 0, yeti: 0 }, dmg: { lulu: 0, yeti: 0 }, guarded: { lulu: 0, yeti: 0 } } };
   sel = null; busy = false; anim = null; fx = []; peek = null;
   if (typeof live !== "undefined") { live = []; frozenFx = {}; }
   addLog("t", "Turn 1");
@@ -393,7 +406,84 @@ function targetOf(k, s, p) {
   return { tx, ty };
 }
 
-function aiPick() {
+// ---- Yeti learning: remembers what you pick in each situation and tries to predict you ----
+const BRAIN_KEY = "tell.yetiBrain.v1";
+let BRAIN = loadBrain();
+function loadBrain() { try { const b = JSON.parse(localStorage.getItem(BRAIN_KEY)); if (b && b.ctx && b.p) return b; } catch (e) {} return { ctx: {}, p: {} }; }
+function saveBrain() { try { localStorage.setItem(BRAIN_KEY, JSON.stringify(BRAIN)); } catch (e) {} }
+function forgetBrain() { BRAIN = { ctx: {}, p: {} }; saveBrain(); renderReads(); }
+function band(d) { return d <= 150 ? "Close" : d <= 300 ? "Mid" : "Far"; }
+// most specific first: range + air/ground + your last move, then range + air/ground, then everything
+function ctxKeys() {
+  const b = band(dist("lulu")), air = G.f.lulu.y > 0 ? "air" : "gnd";
+  return [`${b}|${air}|${G.lastLulu || "-"}`, `${b}|${air}`, "all"];
+}
+function learn(sid, p, keys) {
+  keys.forEach(k => { const c = BRAIN.ctx[k] || (BRAIN.ctx[k] = {}); c[sid] = (c[sid] || 0) + 1; });
+  const q = BRAIN.p[sid] || (BRAIN.p[sid] = [0, 0]); q[0] += p; q[1]++;
+  saveBrain();
+}
+const sumOf = c => c ? Object.values(c).reduce((a, n) => a + n, 0) : 0;
+function avgParam(s) {
+  const q = BRAIN.p[s.id], [lo, hi] = paramRange("lulu", s);
+  return clamp(q && q[1] ? q[0] / q[1] : (s.def || 0), lo, hi);
+}
+// chance of each skill you can use right now, plus how sure the Yeti is (0..1)
+function predict() {
+  const keys = ctxKeys(), wt = [3, 1.5, 0.4];
+  const allowed = SKILLS.lulu.filter(s => !blocked("lulu", s));
+  const sc = {};
+  allowed.forEach(s => sc[s.id] = 0.25);
+  keys.forEach((k, i) => { const c = BRAIN.ctx[k]; if (c) allowed.forEach(s => { if (c[s.id]) sc[s.id] += c[s.id] * wt[i]; }); });
+  const tot = allowed.reduce((a, s) => a + sc[s.id], 0) || 1;
+  const list = allowed.map(s => ({ s, q: sc[s.id] / tot })).sort((a, b) => b.q - a.q);
+  const conf = Math.min(1, (sumOf(BRAIN.ctx[keys[0]]) * 2 + sumOf(BRAIN.ctx[keys[1]])) / 10);
+  return { list, conf };
+}
+// how good a Yeti option is against what you're likely to do
+function readValue(opt, pred) {
+  const k = "yeti", f = G.f[k], o = G.f.lulu, s = opt.s;
+  let at = f;
+  if (s.type === "move") { const t = targetOf(k, s, opt.p); at = { ...f, x: t.tx, y: t.ty }; }
+  let v = 0;
+  pred.list.forEach(({ s: ps, q }) => {
+    let x = 0;
+    if (ps.guard) {
+      x = s.guard ? -1 : s.type === "move" ? 0.5 : -1.5;
+    } else if (ps.type === "move") {
+      const t = targetOf("lulu", ps, avgParam(ps)), lu = { ...o, x: t.tx, y: t.ty };
+      if (s.guard) x = -1;
+      else if (s.type !== "move") x = overlap(boxOf(f, lu, s), hurt(lu)) ? 2.5 : -0.5;
+    } else if (ps.box) {
+      const hitsNow = overlap(boxOf(o, f, ps), hurt(f)), hitsThere = overlap(boxOf(o, at, ps), hurt(at));
+      if (s.guard) x = hitsNow ? 3 : -0.5;
+      else if (s.type === "move") x = hitsNow && !hitsThere ? 2 : hitsThere ? -1.5 : 0;
+      else {
+        const reaches = overlap(boxOf(f, o, s), hurt(o)), faster = startOf(k, s) < startOf("lulu", ps);
+        x = reaches && faster ? 3 : hitsNow && !faster ? -2 : 0;
+      }
+    }
+    v += q * x;
+  });
+  return v * pred.conf;
+}
+function renderReads() {
+  const el = $("reads"); if (!el) return;
+  const rows = (G.reads || []).filter(r => r.done);
+  const right = rows.filter(r => r.guess && r.right).length, guessed = rows.filter(r => r.guess).length;
+  const all = BRAIN.ctx.all || {}, n = sumOf(all);
+  const habits = Object.entries(all).sort((a, b) => b[1] - a[1]).slice(0, 3)
+    .map(([id, c]) => `${(SKILLS.lulu.find(x => x.id === id) || { name: id }).name} ${Math.round(c / n * 100)}%`).join(", ");
+  $("readSum").textContent = guessed ? `Read you ${right}/${guessed}` : "Learning…";
+  el.innerHTML = `<div class="hab">Your habits (${n} moves): ${habits || "none yet"} · <a href="#" id="forget">Forget</a></div>
+    <table><tr><th>#</th><th>You</th><th>Range</th><th>Yeti guessed</th><th>Yeti</th><th>Dmg</th></tr>
+    ${rows.slice().reverse().map(r => `<tr><td>${r.turn}</td><td>${r.you}</td><td>${r.range}</td>
+      <td class="${r.guess ? (r.right ? "ok" : "no") : ""}">${r.guess ? `${r.guess} ${r.gq}%` : "–"}</td><td>${r.yeti}</td>
+      <td><span class="g">${r.dealt}</span>/<span class="b">${r.took}</span></td></tr>`).join("")}</table>`;
+  $("forget").addEventListener("click", e => { e.preventDefault(); forgetBrain(); });
+}
+
+function aiPick(pred) {
   const k = "yeti", f = G.f[k], o = G.f.lulu, e = emo(k), opts = [];
   const threatened = SKILLS.lulu.some(s => s.box && !blocked("lulu", s) && overlap(boxOf(o, f, s), hurt(f)));
   SKILLS[k].forEach(s => {
@@ -421,6 +511,7 @@ function aiPick() {
     }
   });
   if (!opts.length) return { s: HOLD, p: 0 };
+  if (pred) opts.forEach(x => x.sc += readValue(x, pred));
   opts.forEach(x => x.w = Math.exp(x.sc * 0.5));
   let r = Math.random() * opts.reduce((a, x) => a + x.w, 0);
   for (const x of opts) { r -= x.w; if (r <= 0) return x; }
@@ -574,10 +665,18 @@ function commit() {
   busy = true;
   closeInsp();
   peek = null; renderEnemy();
-  const ai = aiPick();
+  const pred = predict(), keys = ctxKeys(), top = pred.list[0];
+  const ai = aiPick(pred);
+  const you = sel.s.type === "move" ? `${sel.s.name} ${sel.p > 0 ? "+" : ""}${sel.p}` : sel.s.name;
+  const row = { turn: G.turn, you, range: band(dist("lulu")), yeti: ai.s.name, done: false,
+    guess: top && pred.conf >= 0.2 ? top.s.name : "", gq: top ? Math.round(top.q * 100) : 0, right: !!top && top.s.id === sel.s.id };
+  learn(sel.s.id, sel.p || 0, keys);
+  G.lastLulu = sel.s.id;
   const start = snap();
   const ev = resolve({ lulu: { s: sel.s, p: sel.p }, yeti: { s: ai.s, p: ai.p } });
   const final = snap();
+  row.dealt = start.yeti.hp - final.yeti.hp; row.took = start.lulu.hp - final.lulu.hp;
+  G.reads.push(row);
   G.f = start;
   sel = null;
   G.history.push({ start: JSON.parse(JSON.stringify(start)), ev, final: JSON.parse(JSON.stringify(final)), turn: G.turn });
@@ -616,6 +715,7 @@ function nextEvent() {
     }
     G.f = JSON.parse(JSON.stringify(a.final));
     anim = null; busy = false;
+    if (G.reads.length) G.reads[G.reads.length - 1].done = true;
     if (G.f.lulu.hp <= 0 || G.f.yeti.hp <= 0) return finish();
     G.turn++;
     addLog("t", `Turn ${G.turn}`);
@@ -671,7 +771,7 @@ function renderLog() {
   $("log").innerHTML = G.log.map(l => `<p class="${l.cls}">${l.text}</p>`).join("");
   $("log").scrollTop = $("log").scrollHeight;
 }
-function ui() { hud(); renderLog(); renderMoves(); renderEnemy(); }
+function ui() { hud(); renderLog(); renderMoves(); renderEnemy(); renderReads(); }
 
 function metaOf(k, s) {
   const st = startOf(k, s), c = cost(k, s);
@@ -871,7 +971,21 @@ function loadSheets() {
         if (white) { x.globalCompositeOperation = "source-atop"; x.fillStyle = "#ffffff"; x.fillRect(0, 0, c.width, c.height); }
         return c;
       };
+      const ice = src => {
+        const c = document.createElement("canvas"); c.width = src.width; c.height = src.height;
+        const x = c.getContext("2d"); x.drawImage(src, 0, 0);
+        const d = x.getImageData(0, 0, c.width, c.height), p = d.data;
+        const R = [[20, 40, 110], [60, 140, 230], [230, 250, 255]];
+        for (let i = 0; i < p.length; i += 4) {
+          if (!p[i + 3]) continue;
+          const t = Math.min(1, 0.12 + (0.3 * p[i] + 0.59 * p[i + 1] + 0.11 * p[i + 2]) / 255), u = t < 0.5 ? t * 2 : (t - 0.5) * 2, A = R[t < 0.5 ? 0 : 1], Z = R[t < 0.5 ? 1 : 2];
+          for (let j = 0; j < 3; j++) p[i + j] = Math.round(A[j] + (Z[j] - A[j]) * u);
+        }
+        x.putImageData(d, 0, 0);
+        return c;
+      };
       S.img = { r: mk(false, false), l: mk(true, false), rw: mk(false, true), lw: mk(true, true) };
+      S.img.ri = ice(S.img.r); S.img.li = ice(S.img.l);
       res();
     };
     img.src = S.src;
@@ -899,12 +1013,26 @@ function drawFighterLow(k, f, alpha, flash) {
     row = i;
   } else { col = i % S.cols; row = Math.floor(i / S.cols); }
   const left = f.dir < 0;
-  const im = S.img[(left ? "l" : "r") + (flash ? "w" : "")];
+  const im = S.img[(left ? "l" : "r") + (flash ? "w" : f.chill ? "i" : "")];
   const sx = col * S.fw, sy = row * S.fh;
   const ax = left ? S.fw - S.ax : S.ax;
   lc.globalAlpha = alpha;
   lc.drawImage(im, sx, sy, S.fw, S.fh, lx(f.x) - ax + (f.shake || 0), ly(f.y) - S.ay, S.fw, S.fh);
   lc.globalAlpha = 1;
+}
+
+// twinkling ice glitter around a Chilled fighter
+function iceGlitter(k, f, now) {
+  const B = BODY[k], w = Math.round(B.hw / PX) + 6, h = Math.round(B.h / PX) + 4, cx = lx(f.x), by = ly(f.y);
+  for (let i = 0; i < 14; i++) {
+    const per = 700 + (i * 137) % 500, t = now + i * 211, cyc = Math.floor(t / per), u = (t % per) / per;
+    const r1 = Math.sin((cyc + 1) * 12.9898 + i * 78.233 + (k === "yeti" ? 5 : 0)) * 43758.5453, r2 = Math.sin((cyc + 1) * 39.346 + i * 11.135) * 24634.6345;
+    const x = cx + Math.round((r1 - Math.floor(r1) - 0.5) * 2 * w), y = by - Math.round((r2 - Math.floor(r2)) * h) - Math.round(u * 3);
+    const b = Math.sin(u * Math.PI);
+    if (b < 0.15) continue;
+    lc.fillStyle = b > 0.7 ? "#ffffff" : "#bfeeff"; lc.fillRect(x, y, 1, 1);
+    if (b > 0.75 && i % 3 === 0) { lc.fillStyle = "rgba(160,225,255,.85)"; lc.fillRect(x - 1, y, 1, 1); lc.fillRect(x + 1, y, 1, 1); lc.fillRect(x, y - 1, 1, 1); lc.fillRect(x, y + 1, 1, 1); }
+  }
 }
 
 let bgCache = null;
@@ -1001,8 +1129,7 @@ function updateFx(now, F) {
   lastNow = now;
   KEYS.forEach(k => {
     const f = F[k];
-    if (f.chill && !frozenFx[k]) frozenFx[k] = spawnFx("frozen", { x: lx(f.x), y: ly(f.y), palette: PFX.PAL.ice, follow: k });
-    if (!f.chill && frozenFx[k]) { frozenFx[k].fx.stop(); frozenFx[k] = null; }
+    if (frozenFx[k]) { frozenFx[k].fx.stop(); frozenFx[k] = null; }
   });
   PFX.clearFrame(fxFrame);
   live.forEach(r => {
@@ -1057,6 +1184,7 @@ function frame(now) {
     const f = F[k];
     const sh = now < freezeUntil && flashKey === k ? (Math.floor(now / 30) % 2 ? 1 : -1) : 0;
     drawFighterLow(k, sh ? Object.assign({}, f, { shake: sh }) : f, 1, flashKey === k);
+    if (f.chill) iceGlitter(k, f, now);
     const e = emo(k, f.san);
     pixText(lc, e.name, lx(f.x), FL + 7, e.extreme ? C.gold : (k === "lulu" ? C.ice : C.orange), true);
     if (!anim && hover === k) {
@@ -1100,6 +1228,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "Enter") commit();
 });
 $("goBtn").addEventListener("click", commit);
+$("readHead").addEventListener("click", () => { $("readBox").classList.toggle("min"); $("readTog").innerHTML = $("readBox").classList.contains("min") ? "+" : "&minus;"; });
 $("logHead").addEventListener("click", () => { $("logBox").classList.toggle("min"); $("logTog").innerHTML = $("logBox").classList.contains("min") ? "+" : "&minus;"; });
 $("startBtn").addEventListener("click", () => { $("intro").hidden = true; });
 $("helpBtn").addEventListener("click", () => { $("intro").hidden = false; });
