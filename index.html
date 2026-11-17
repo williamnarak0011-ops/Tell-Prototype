@@ -188,6 +188,38 @@ canvas.pointer { cursor: pointer; }
 .readbox td.ok { color: #ff8a2a; }
 .readbox td.no { color: #6b7480; }
 .readbox .g { color: #8fe3ff; } .readbox .b { color: #ffb07a; }
+.hp .row .hs { color: #ffd23a; }
+.bu { width: 46px; height: 10px; border: 2px solid #c4b0ea; display: inline-block; position: relative; }
+.bu i { position: absolute; left: 0; top: 0; bottom: 0; background: #c4b0ea; }
+.bu.on { box-shadow: 0 0 6px #c4b0ea; }
+.hp.r .row .bu i { left: auto; right: 0; }
+.dock .state { font-size: 16px; color: #ffb07a; min-height: 18px; line-height: 1.1; }
+.dock .ghost { font-size: 16px; color: #8fe3ff; min-height: 18px; line-height: 1.1; margin-top: 2px; }
+.xrow { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 4px; font-size: 16px; color: #aab4c4; flex-wrap: wrap; }
+.xrow .tg { cursor: pointer; display: flex; align-items: center; gap: 4px; }
+.xrow .tg small { color: #6b7480; font-size: 14px; }
+.xrow .tg.dis { opacity: .4; cursor: default; }
+.xrow input[type=checkbox] { accent-color: #ffd23a; }
+.dock { grid-template-columns: 1fr 380px 1fr; }
+.stage, .dock { width: min(100vw, calc((100vh - 300px) * 2.3077)); }
+.dock .desc { font-size: 16px; min-height: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gorow { display: flex; gap: 10px; align-items: center; margin-top: 4px; }
+.gorow .go { flex: 1; margin-top: 0 !important; }
+.dibox { display: flex; align-items: center; gap: 6px; }
+.dibox > span { font-size: 14px; letter-spacing: 2px; color: #6b7480; }
+.di { display: inline-grid; grid-template-columns: repeat(3, 20px); gap: 2px; }
+.di button { width: 20px; height: 20px; padding: 0; background: #0a0d14; border: 1px solid #1d2635; color: #6b7480; font-size: 14px; line-height: 1; }
+.di button:hover { border-color: #8fa4c4; color: #e9f3ff; }
+.di button.on { border-color: #4fe3ff; color: #4fe3ff; background: #0f2230; }
+.grps.r .ic { color: #39414e !important; background: #06080c; border-color: #121822; cursor: help; }
+.grps.r .ic svg { opacity: .7; }
+.grps.r .ic.off { opacity: .45; }
+.grps.r .ic:hover { border-color: #3a2a1e; }
+.grps.r .ic.sel { color: #8a5a36 !important; border-color: #5a3418; background: #120b06; }
+.dock .grps.r .gl, .dock .grps.r .gl.on { color: #4a4f58; }
+.sheet { max-height: calc(100vh - 32px); overflow: auto; }
+.sheet li { margin-bottom: 4px; }
+.hp .row { flex-wrap: nowrap; white-space: nowrap; gap: 10px; font-size: 20px; }
 </style>
 </head>
 <body>
@@ -215,10 +247,13 @@ canvas.pointer { cursor: pointer; }
     <div id="mpeek"></div>
     <div class="grps" id="groups"></div>
     <div class="mid">
+      <div class="state" id="stateTxt"></div>
       <div class="selname" id="selname"></div>
       <div class="desc" id="desc"></div>
       <div id="param"></div>
-      <button class="go" id="goBtn" type="button" disabled>Lock in</button>
+      <div class="xrow" id="extra"></div>
+      <div class="ghost" id="ghostTxt"></div>
+      <div class="gorow"><button class="go" id="goBtn" type="button" disabled>Lock in</button></div>
     </div>
     <div class="grps r" id="eskills"></div>
     <div id="epeek"></div>
@@ -228,16 +263,18 @@ canvas.pointer { cursor: pointer; }
 <div class="overlay" id="intro">
   <div class="sheet">
     <h2>T<em>E</em>LL</h2>
-    <p>You are Lulu, climbing an icy mountain. You and the Yeti pick a skill <b>in secret</b>. Press <b>Lock in</b> and both moves play out at once.</p>
+    <p>You are Lulu, climbing an icy mountain. You and the Yeti pick skills <b>in secret</b>, and the fight runs frame by frame until someone is free to act again.</p>
     <ul>
-      <li><b>Frames</b>: every skill has <b>Startup</b> (frames before it can hit), <b>Active</b> (frames it can hit) and <b>Recovery</b>. Both moves run side by side, frame by frame, so a fast move can land before a slow one ever comes out. Hit someone during their Startup and their move is cancelled.</li>
-      <li><b>Counter-hit</b>: get hit during your own attack's Startup or Active frames and you lose 10 Sanity.</li>
-      <li><b>Combo</b>: at 15 hits in a row, and every 5 after, the attacker gains 5 Sanity and the defender loses 5.</li>
-      <li><b>Sanity</b> sets each fighter's <b>emotion</b>, and every emotion has a <b>passive</b> that limits moves. <b>Click a fighter</b> (or their name) to read it.</li>
-      <li><b>Light</b> pays for specials. You get 1 back each turn, up to 3.</li>
-      <li>Getting hit leaves you <b>Staggered</b>, and ice attacks leave you <b>Chilled</b>: each adds 4 frames of Startup to your moves next turn.</li>
-      <li><b>Guard</b> skills (Ice Wall, Ice Armor) halve damage and stop counter-hits for that turn.</li>
-      <li>The faint shape shows where your move goes. The box shows where your attack hits. <b>Click any Yeti skill</b> to see its frames and its hit box on the stage.</li>
+      <li><b>Frames</b>: every skill has <b>Startup</b>, <b>Active</b> and <b>Recovery</b>. A fast move lands before a slow one comes out.</li>
+      <li><b>Your turn comes when you're free</b>. Quick moves (or <b>Wait</b>) give you your next pick sooner, often while the Yeti is still mid-move, and you can see exactly what it's doing and when it hits. It sees you the same way.</li>
+      <li><b>Ghost</b>: before you lock in, a see-through Lulu plays your pick forward (assuming the Yeti stands still or finishes what it's doing) and tells you damage and who is free first (<b>+</b> means you).</li>
+      <li><b>Hitstun &amp; combos</b>: a hit stuns for a while. If you recover first, you can link another hit. Damage and hitstun shrink the longer a combo runs. Counter-hits (hitting someone mid-attack) add hitstun and cost 10 Sanity.</li>
+      <li><b>Momentum</b>: moves push you with real speed. You keep gliding after a Slide or Step and can attack on the move, jumps arc under gravity, and hits knock you flying. Hard hits bounce off the ice walls at each end of the (much longer) path.</li>
+      <li><b>Burst</b>: when you're stuck in a combo with a full gauge you get a pick: Burst out invincibly, or hold.</li>
+      <li><b>Parry</b>: pick the frame a hit will land. Get it within 1 frame and you take nothing, gain Sanity and Light, and act at once. The Yeti's version is <b>Catch</b>.</li>
+      <li><b>Feint</b> is a skill: when the Yeti gets to act while your skill is still playing, you get a turn too. Press <b>Continue</b>, or press Feint and pick a new skill to cancel into. It costs no Light but needs 5 turns to recharge. The Yeti can feint the same way, and it learns how often you do.</li>
+      <li><b>Sanity</b> sets each fighter's <b>emotion</b>, and every emotion has a <b>passive</b> that limits moves. Click a fighter to read it.</li>
+      <li><b>Light</b> pays for specials: +1 every 24 frames, up to 3. Ice Wall and Ice Armor halve damage and stop counter-hits. Ice attacks <b>Chill</b>: +4 frames on the next move.</li>
     </ul>
     <div class="row"><button class="go" id="startBtn" type="button">Fight</button></div>
   </div>
@@ -277,50 +314,67 @@ import * as fx_frozen from "pfx/fx/status/frozen.js";
 import * as fx_quake from "pfx/fx/nature/quake.js";
 const PFX = { createFrame: core.createFrame, clearFrame: core.clearFrame, createFx: core.createFx, composite: core.composite, PAL: core.PAL, mods: { thrust: fx_thrust, heavyCleave: fx_heavyCleave, uppercut: fx_uppercut, spearSweep: fx_spearSweep, iceLance: fx_iceLance, iceShatter: fx_iceShatter, frostNova: fx_frostNova, snowflakeBurst: fx_snowflakeBurst, blizzardVortex: fx_blizzardVortex, clawSwipe: fx_clawSwipe, hammerSmash: fx_hammerSmash, groundSlam: fx_groundSlam, boulder: fx_boulder, bluntHit: fx_bluntHit, heavyLanding: fx_heavyLanding, hitSpark: fx_hitSpark, critHit: fx_critHit, shieldBlock: fx_shieldBlock, frozen: fx_frozen, quake: fx_quake } };
 const TUNE = {
-  W: 1200, FLOOR: 456, minX: 50, maxX: 1150, gap: 54, airH: 140,
-  hp: 100, lightMax: 3, lightStart: 3, lightRegen: 1,
+  W: 3000, VIEW: 1200, FLOOR: 456, minX: 60, maxX: 2940, gap: 54, airH: 140,
+  hp: 100, lightMax: 3, lightStart: 3, lightEvery: 24,
   sanMin: -45, sanMax: 45, counterLoss: 10, comboStart: 15, comboStep: 5, comboSan: 5,
-  stagger: 4, chill: 4, extremeRecover: 10, push: 35, eventMs: 560, replayMs: 300, threat: 200, hitstop: 90, hitstopCounter: 150
+  chill: 4, extremeRecover: 10, push: 35, eventMs: 560, replayMs: 300, threat: 200, hitstop: 90, hitstopCounter: 150,
+  // YOMI-style systems
+  hsMin: 3, counterHs: 4, hsDecay: 2, blockAdv: -2, comboScale: 0.12, minScale: 0.4,
+  // YOMI-style velocity (YOMI base: gravity 0.5, fall 8, air 13, dash 12 per tick; scaled ~3x to Tell's units)
+  grav: 1.5, maxFall: 24, fricG: 3, fricA: 0.25, fricStun: 1.6, slickFric: 0.7, slickT: 30,
+  jumpV: { lulu: 21, yeti: 19 }, maxG: { lulu: 46, yeti: 48 }, maxA: 30, plunge: 22, wallBounce: 16,
+  frameMs: 33, replayFrameMs: 14,
+  burstMax: 100, burstPerFrame: 0.25, burstPerDmg: 2.5, burstKnock: 170, burstHs: 22,
+  parryWin: 1, parrySan: 5, feintCd: 5, maxSeg: 240, ghostMax: 120, ghostMs: 45
 };
 
 const BODY = { lulu: { hw: 20, h: 180 }, yeti: { hw: 50, h: 215 } };
 
+// adv = frames the defender is still stuck after the attacker recovers (frame advantage on hit)
 const SKILLS = {
   lulu: [
     { id: "step", name: "Step", type: "move", light: 0, ground: true, range: [-150, 150], def: 80, ds: "Walk forward or back on the ice." },
-    { id: "slide", name: "Ice Slide", type: "move", light: 0, ground: true, range: [-320, 320], def: 220, ds: "Slide far across the ice. Slower to start.", pose: "slide" },
-    { id: "leap", name: "Leap", type: "move", light: 0, ground: true, jump: true, range: [-150, 150], def: 60, ds: "Jump into the air. You come down at the end of next turn." },
+    { id: "slide", name: "Ice Slide", type: "move", light: 0, ground: true, range: [-320, 320], def: 220, ds: "Kick off and glide on the ice. Keeps sliding after, so you can attack on the move.", pose: "slide" },
+    { id: "leap", name: "Leap", type: "move", light: 0, ground: true, jump: true, range: [-150, 150], def: 60, ds: "Jump into the air. Gravity brings you down; your sideways speed carries." },
     { id: "hook", name: "Axe Hook", type: "move", light: 0, range: [0, 420], def: 300, ds: "Hook the axe into the ice and pull yourself forward. Works in the air.", pose: "hook" },
-    { id: "jab", name: "Pick Jab", type: "atk", light: 0, hits: 3, dmg: 2, box: [14, 90, 50, 96], pose: "jab", ds: "Quick poke with the axe spike." },
-    { id: "swing", name: "Axe Swing", type: "atk", light: 0, hits: 4, dmg: 3, box: [10, 110, 20, 130], pose: "swing", ds: "Overhead swing that chops down in front." },
-    { id: "rise", name: "Rising Axe", type: "atk", light: 0, hits: 5, dmg: 2, box: [0, 80, 60, 250], pose: "rise", ds: "Upward swing. Catches jumpers." },
-    { id: "sweep", name: "Frost Sweep", type: "atk", light: 0, hits: 4, dmg: 3, box: [14, 180, 0, 40], ground: true, chill: true, pose: "sweep", ds: "Low icy kick. A hit leaves them Chilled. Ground only." },
-    { id: "icicle", name: "Icicle Throw", type: "atk", light: 0, hits: 3, dmg: 3, box: [140, 430, 40, 100], proj: "icicle", pose: "throw", ds: "Throw an icicle far away. Misses up close." },
-    { id: "drop", name: "Glacier Drop", type: "atk", light: 0, hits: 6, dmg: 2, box: [-20, 90, -150, 60], air: true, pose: "drop", ds: "Plunge down axe-first. Air only." },
-    { id: "wall", name: "Ice Wall", type: "spc", light: 1, guard: true, pose: "wall", ds: "Raise a wall of ice. Hits on you do half damage and can't counter-hit you this turn." },
-    { id: "avalanche", name: "Avalanche", type: "spc", light: 2, hits: 8, dmg: 3, box: [10, 280, 0, 210], chill: true, pose: "burst", ds: "Bring down the snow in front of you. Slow. A hit leaves them Chilled." }
+    { id: "wait", name: "Wait", type: "move", wait: true, light: 0, range: [2, 30], def: 6, ds: "Do nothing for a few frames, then pick again. Lets you see what the Yeti commits to." },
+    { id: "jab", kb: [1, 0, 9], name: "Pick Jab", type: "atk", light: 0, hits: 3, dmg: 2, adv: 6, box: [14, 90, 50, 96], pose: "jab", ds: "Quick poke with the axe spike. Links into itself." },
+    { id: "swing", kb: [1, 0.1, 13], name: "Axe Swing", type: "atk", light: 0, hits: 4, dmg: 3, adv: 3, box: [10, 110, 20, 130], pose: "swing", ds: "Overhead swing that chops down in front." },
+    { id: "rise", kb: [0.3, 1, 21], name: "Rising Axe", type: "atk", light: 0, hits: 5, dmg: 2, adv: 8, launch: true, box: [0, 80, 60, 250], pose: "rise", ds: "Upward swing. Catches jumpers and launches." },
+    { id: "sweep", kb: [1, 0.35, 11], name: "Frost Sweep", type: "atk", light: 0, hits: 4, dmg: 3, adv: 2, box: [14, 180, 0, 40], ground: true, chill: true, pose: "sweep", ds: "Low icy kick. A hit leaves them Chilled. Ground only." },
+    { id: "icicle", kb: [1, 0.2, 12], name: "Icicle Throw", type: "atk", light: 0, hits: 3, dmg: 3, adv: 7, box: [140, 430, 40, 100], proj: "icicle", pose: "throw", ds: "Throw an icicle far away. Misses up close." },
+    { id: "drop", kb: [0.4, -1, 16], name: "Glacier Drop", type: "atk", light: 0, hits: 6, dmg: 2, adv: 4, box: [-20, 90, -150, 60], air: true, pose: "drop", ds: "Plunge down axe-first. Air only." },
+    { id: "wall", name: "Ice Wall", type: "spc", light: 1, guard: true, pose: "wall", ds: "Raise a wall of ice. Hits on you do half damage and can't counter-hit you." },
+    { id: "parry", name: "Parry", type: "spc", parry: true, light: 0, range: [2, 24], def: 6, pose: "wall", ds: "Pick the frame you think a hit will land. Within 1 frame of it, you take nothing, gain 5 Sanity and 1 Light, and act at once. Guess wrong and you're stuck." },
+    { id: "burst", kb: [1, 0.5, 30], name: "Burst", type: "spc", burst: true, light: 0, hits: 1, dmg: 0, box: [-130, 130, -30, 190], pose: "burst", ds: "Only in hitstun with a full Burst gauge. Breaks the combo and blasts the Yeti away. Invincible as it comes out." },
+    { id: "feint", name: "Feint", type: "spc", feint: true, light: 0, ds: "Only while your last skill is still playing and the Yeti gets to act. Cancel it on the spot into a new skill. Costs no Light, then needs 5 turns to recharge." },
+    { id: "avalanche", kb: [1, 0.5, 20], name: "Avalanche", type: "spc", light: 2, hits: 8, dmg: 3, adv: 10, box: [10, 280, 0, 210], chill: true, pose: "burst", ds: "Bring down the snow in front of you. Slow. A hit leaves them Chilled." }
   ],
   yeti: [
     { id: "lumber", name: "Lumber", type: "move", light: 0, ground: true, range: [-120, 200], def: 120, ds: "Heavy steps forward, or back a little." },
     { id: "charge", name: "Charge", type: "move", light: 0, ground: true, range: [0, 360], def: 260, ds: "Runs straight at you.", pose: "charge" },
     { id: "bound", name: "Bound", type: "move", light: 0, ground: true, jump: true, range: [-100, 200], def: 100, ds: "Big jump into the air." },
-    { id: "swipe", name: "Swipe", type: "atk", light: 0, hits: 4, dmg: 2, box: [20, 100, 30, 120], pose: "swipe", ds: "Fast claw swipe in front." },
-    { id: "slam", name: "Slam", type: "atk", light: 0, hits: 3, dmg: 4, box: [20, 140, 0, 170], pose: "slam", ds: "Both fists down hard. Slow but heavy." },
-    { id: "stomp", name: "Stomp", type: "atk", light: 0, hits: 5, dmg: 2, box: [-70, 110, 0, 40], ground: true, pose: "stomp", ds: "Shakes the ground on both sides. Ground only." },
-    { id: "boulder", name: "Boulder Toss", type: "atk", light: 0, hits: 2, dmg: 6, box: [150, 470, 30, 130], proj: "boulder", pose: "toss", ds: "Throws a rock of ice far away. Misses up close." },
-    { id: "hug", name: "Bear Hug", type: "atk", light: 0, hits: 2, dmg: 4, box: [16, 80, 20, 120], san: 5, pose: "grab", ds: "Grabs and squeezes. A hit costs 5 Sanity." },
-    { id: "flop", name: "Belly Flop", type: "atk", light: 0, hits: 6, dmg: 2, box: [-40, 120, -150, 60], air: true, pose: "flop", ds: "Falls on you from the air. Air only." },
-    { id: "roar", name: "Roar", type: "spc", light: 2, hits: 6, dmg: 2, box: [-160, 170, 0, 240], san: 5, pose: "roar", ds: "Shockwave all around. A hit costs 5 Sanity." },
-    { id: "armor", name: "Ice Armor", type: "spc", light: 1, guard: true, pose: "armor", ds: "Covers itself in ice. Hits do half damage and can't counter-hit it this turn." },
-    { id: "blizzard", name: "Blizzard", type: "spc", light: 3, hits: 8, dmg: 2, box: [0, 320, 0, 240], chill: true, pose: "blizzard", ds: "A storm in front of it. Slow. A hit leaves you Chilled." }
+    { id: "swipe", kb: [1, 0.1, 11], name: "Swipe", type: "atk", light: 0, hits: 4, dmg: 2, adv: 5, box: [20, 100, 30, 120], pose: "swipe", ds: "Fast claw swipe in front." },
+    { id: "slam", kb: [1, 0.3, 17], name: "Slam", type: "atk", light: 0, hits: 3, dmg: 4, adv: 4, box: [20, 140, 0, 170], pose: "slam", ds: "Both fists down hard. Slow but heavy." },
+    { id: "stomp", kb: [1, 0.5, 12], name: "Stomp", type: "atk", light: 0, hits: 5, dmg: 2, adv: 3, box: [-70, 110, 0, 40], ground: true, pose: "stomp", ds: "Shakes the ground on both sides. Ground only." },
+    { id: "boulder", kb: [1, 0.3, 18], name: "Boulder Toss", type: "atk", light: 0, hits: 2, dmg: 6, adv: 6, box: [150, 470, 30, 130], proj: "boulder", pose: "toss", ds: "Throws a rock of ice far away. Misses up close." },
+    { id: "hug", kb: [1, 0.2, 12], name: "Bear Hug", type: "atk", light: 0, hits: 2, dmg: 4, adv: 1, box: [16, 80, 20, 120], san: 5, pose: "grab", ds: "Grabs and squeezes. A hit costs 5 Sanity." },
+    { id: "flop", kb: [0.5, -1, 16], name: "Belly Flop", type: "atk", light: 0, hits: 6, dmg: 2, adv: 4, box: [-40, 120, -150, 60], air: true, pose: "flop", ds: "Falls on you from the air. Air only." },
+    { id: "roar", kb: [1, 0.6, 20], name: "Roar", type: "spc", light: 2, hits: 6, dmg: 2, adv: 8, box: [-160, 170, 0, 240], san: 5, pose: "roar", ds: "Shockwave all around. A hit costs 5 Sanity." },
+    { id: "armor", name: "Ice Armor", type: "spc", light: 1, guard: true, pose: "armor", ds: "Covers itself in ice. Hits do half damage and can't counter-hit it." },
+    { id: "catch", name: "Catch", type: "spc", parry: true, light: 0, range: [2, 24], def: 6, pose: "armor", ds: "The Yeti times a parry. If your hit lands within 1 frame of its guess, it takes nothing and acts at once." },
+    { id: "burst", kb: [1, 0.5, 30], name: "Burst", type: "spc", burst: true, light: 0, hits: 1, dmg: 0, box: [-150, 150, -30, 190], pose: "roar", ds: "Only in hitstun with a full gauge. Breaks your combo with a shockwave." },
+    { id: "feint", name: "Feint", type: "spc", feint: true, light: 0, ds: "When you get to act while its skill is still playing, the Yeti can cancel that skill into a new one. 5-turn recharge." },
+    { id: "blizzard", kb: [1, 0.4, 16], name: "Blizzard", type: "spc", light: 3, hits: 8, dmg: 2, adv: 8, box: [0, 320, 0, 240], chill: true, pose: "blizzard", ds: "A storm in front of it. Slow. A hit leaves you Chilled." }
   ]
 };
 Object.entries({ lulu: 1.44, yeti: 1.4 }).forEach(([k, m]) => SKILLS[k].forEach(s => { if (s.box) s.box = [s.box[0], s.box[1], Math.round(s.box[2] * m), Math.round(s.box[3] * m)]; }));
-const HOLD = { id: "hold", name: "Hold", type: "move", light: 0, range: [0, 0], def: 0, ds: "Stand still. Only shows up when nothing else is allowed." };
+const HOLD = { id: "hold", name: "Hold", type: "move", wait: true, light: 0, range: [1, 30], def: 3, ds: "Stand still. Only shows up when nothing else is allowed." };
 
 const FRAMES = {
-  step: [5, 0, 3], slide: [8, 0, 5], leap: [4, 0, 4], hook: [10, 0, 5],
+  step: [5, 0, 3], slide: [8, 0, 5], leap: [4, 0, 4], hook: [10, 0, 5], wait: [6, 0, 0],
   jab: [5, 3, 6], swing: [9, 3, 9], rise: [7, 4, 10], sweep: [11, 3, 10], icicle: [12, 5, 8], drop: [6, 4, 8], wall: [2, 14, 4], avalanche: [16, 5, 14],
+  parry: [1, 0, 8], catch: [1, 0, 10], burst: [1, 5, 14], feint: [1, 0, 0],
   lumber: [6, 0, 4], charge: [9, 0, 6], bound: [7, 0, 4],
   swipe: [6, 3, 8], slam: [13, 4, 12], stomp: [9, 3, 10], boulder: [18, 6, 12], hug: [10, 3, 10], flop: [7, 4, 10], roar: [10, 4, 12], armor: [2, 14, 4], blizzard: [17, 6, 14],
   hold: [3, 0, 0]
@@ -329,34 +383,43 @@ const FRAMES = {
 
 const EMOS = {
   lulu: [
-    { id: "scared", name: "Scared", min: -45, max: -45, extreme: true, only: ["move"], ps: "Only Movement for 1 turn." },
+    { id: "scared", name: "Scared", min: -45, max: -45, extreme: true, only: ["move"], ps: "Only Movement for 1 move." },
     { id: "shivering", name: "Shivering", min: -44, max: -15, noApproach: true, ps: "Can't Step, Slide or Hook toward the enemy." },
     { id: "calm", name: "Calm", min: -14, max: 14, ps: "No limits." },
     { id: "focused", name: "Focused", min: 15, max: 44, bonus: { jab: 2, rise: 2 }, ps: "Pick Jab and Rising Axe gain +2 hits." },
-    { id: "reckless", name: "Reckless", min: 45, max: 45, extreme: true, only: ["atk", "spc"], noGuard: true, speed: -2, ps: "Only attacks (no Ice Wall), 2 frames faster to start, for 1 turn." }
+    { id: "reckless", name: "Reckless", min: 45, max: 45, extreme: true, only: ["atk", "spc"], noGuard: true, speed: -2, ps: "Only attacks (no Ice Wall or Parry), 2 frames faster to start, for 1 move." }
   ],
   yeti: [
-    { id: "scared", name: "Scared", min: -45, max: -45, extreme: true, only: ["move"], ps: "Only Movement for 1 turn." },
+    { id: "scared", name: "Scared", min: -45, max: -45, extreme: true, only: ["move"], ps: "Only Movement for 1 move." },
     { id: "sulking", name: "Sulking", min: -44, max: -20, ban: ["roar", "blizzard"], ps: "Won't use Roar or Blizzard." },
     { id: "calm", name: "Calm", min: -19, max: 19, ps: "No limits." },
-    { id: "enraged", name: "Enraged", min: 20, max: 44, mustAttack: true, ps: "If you're close (200 or less), it must attack. No Ice Armor." },
-    { id: "frenzy", name: "Frenzy", min: 45, max: 45, extreme: true, only: ["atk", "spc"], noGuard: true, freeLight: ["roar"], ps: "Only attacks (no Ice Armor), Roar costs no Light, for 1 turn." }
+    { id: "enraged", name: "Enraged", min: 20, max: 44, mustAttack: true, ps: "If you're close (200 or less), it must attack. No Ice Armor or Catch." },
+    { id: "frenzy", name: "Frenzy", min: 45, max: 45, extreme: true, only: ["atk", "spc"], noGuard: true, freeLight: ["roar"], ps: "Only attacks (no Ice Armor or Catch), Roar costs no Light, for 1 move." }
   ]
 };
 const NAMES = { lulu: { name: "Lulu", title: "the ice climber" }, yeti: { name: "Yeti", title: "the mountain's keeper" } };
 const KEYS = ["lulu", "yeti"];
 
 let G, sel, busy, peek = null, inspKey = null, anim = null, fx = [], hover = null;
+let ghost = null, feintArmed = false, segCur = 0;
 const $ = id => document.getElementById(id);
 const cv = $("cv"), ctx = cv.getContext("2d");
 const other = k => k === "lulu" ? "yeti" : "lulu";
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const SK = (k, id) => id === "hold" ? HOLD : SKILLS[k].find(s => s.id === id);
+const actSk = a => SK(a.k, a.sid);
+const isAtk = s => !!s.box && s.type !== "move" && !s.guard && !s.parry;
 
-function fresh(key, x) { return { key, x, y: 0, dir: key === "lulu" ? 1 : -1, hp: TUNE.hp, san: 0, light: TUNE.lightStart, stag: false, chill: false, guard: false, combo: 0, pose: "idle" }; }
+function fresh(key, x) {
+  return { key, x, y: 0, dir: key === "lulu" ? 1 : -1, hp: TUNE.hp, san: 0, light: TUNE.lightStart, lc: 0, burst: TUNE.burstMax,
+    vx: 0, vy: 0, slick: 0, side: key === "lulu" ? 1 : -1, chill: false, guard: false, parry: false, inv: false, combo: 0, cmoves: 0, hs: 0, stun: false, blk: false, act: null, fcd: 0, pose: "idle" };
+}
 function newGame() {
-  G = { turn: 1, f: { lulu: fresh("lulu", 440), yeti: fresh("yeti", 760) }, log: [], over: false,
-        history: [], reads: [], lastLulu: null, stats: { counters: { lulu: 0, yeti: 0 }, bestCombo: { lulu: 0, yeti: 0 }, scared: { lulu: 0, yeti: 0 }, dmg: { lulu: 0, yeti: 0 }, guarded: { lulu: 0, yeti: 0 } } };
-  sel = null; busy = false; anim = null; fx = []; peek = null;
+  const z = () => ({ lulu: 0, yeti: 0 });
+  G = { turn: 1, frame: 0, f: { lulu: fresh("lulu", 1340), yeti: fresh("yeti", 1660) }, log: [], over: false,
+        history: [], reads: [], lastLulu: null, stats: { counters: z(), bestCombo: z(), scared: z(), dmg: z(), guarded: z(), parries: z(), bursts: z(), feints: z() } };
+  sel = null; busy = false; anim = null; fx = []; peek = null; ghost = null; feintArmed = false; replay = null;
+  if (typeof camX !== "undefined") camX = (TUNE.W - TUNE.VIEW) / 2;
   if (typeof live !== "undefined") { live = []; frozenFx = {}; }
   addLog("t", "Turn 1");
   addLog("", "The Yeti blocks the mountain path.");
@@ -368,9 +431,19 @@ function emo(k, san) {
   const s = clamp(san === undefined ? G.f[k].san : san, TUNE.sanMin, TUNE.sanMax);
   return EMOS[k].find(e => s >= e.min && s <= e.max);
 }
+function free(k) { const f = G.f[k]; return !f.act && f.hs <= 0; }
+function stunned(k) { const f = G.f[k]; return f.stun && f.hs > 0; }
+function luluMode() { return free("lulu") ? "act" : G.f.lulu.act ? "mid" : "stun"; }
+// Feint: cancel the skill you're still in (attacks and specials), only when you get a turn mid-skill
+function cancellable(k) { const f = G.f[k], a = f.act, s = a && actSk(a); return !!s && f.hs <= 0 && !f.stun && (isAtk(s) || s.type === "spc") && !s.burst && a.t < a.end; }
+function canFeint(k) { return cancellable(k) && G.f[k].fcd <= 0; }
 function facing(f, o) { return o.x > f.x ? 1 : o.x < f.x ? -1 : f.dir; }
 function cost(k, s) { const e = emo(k); return e.freeLight && e.freeLight.includes(s.id) ? 0 : s.light; }
-function startOf(k, s) { const e = emo(k), f = G.f[k]; return Math.max(2, s.st + (f.stag ? TUNE.stagger : 0) + (f.chill ? TUNE.chill : 0) + (e.speed || 0)); }
+function startOf(k, s) {
+  if (s.wait || s.parry || s.burst) return s.st;
+  const e = emo(k), f = G.f[k];
+  return Math.max(2, s.st + (f.chill ? TUNE.chill : 0) + (e.speed || 0));
+}
 function hitsOf(k, s) { const e = emo(k); return (s.hits || 0) + ((e.bonus && e.bonus[s.id]) || 0); }
 function dist(k) { return Math.abs(G.f[k].x - G.f[other(k)].x); }
 function paramRange(k, s) {
@@ -382,18 +455,31 @@ function paramRange(k, s) {
 function blocked(k, s) {
   const f = G.f[k], e = emo(k);
   if (s === HOLD) return "";
+  if (s.feint) {
+    if (!f.act) return "Only mid-skill";
+    if (f.fcd > 0) return `Recharging ${f.fcd}`;
+    if (!cancellable(k)) return "Can't cancel this";
+    return "";
+  }
+  if (s.burst) {
+    if (!stunned(k)) return "Only in hitstun";
+    if (f.burst < TUNE.burstMax) return "Burst not full";
+    return "";
+  }
+  if (stunned(k)) return "Hitstun";
+  if ((f.act && !(k === "lulu" && feintArmed && canFeint("lulu"))) || f.hs > 0) return "Busy";
   if (e.only && !e.only.includes(s.type)) return e.name;
-  if (s.guard && (e.noGuard || e.mustAttack)) return e.name;
+  if ((s.guard || s.parry) && (e.noGuard || e.mustAttack)) return e.name;
   if (e.ban && e.ban.includes(s.id)) return e.name;
   if (e.mustAttack && s.type === "move" && dist(k) <= TUNE.threat) return e.name;
   if (s.ground && f.y > 0) return "In the air";
   if (s.air && f.y <= 0) return "On the ground";
   if (cost(k, s) > f.light) return "No Light";
-  if (s.type === "move") { const [lo, hi] = paramRange(k, s); if (lo >= hi) return "No room"; }
+  if (s.type === "move" && !s.wait) { const [lo, hi] = paramRange(k, s); if (lo >= hi) return "No room"; }
   return "";
 }
-function boxOf(f, o, s) {
-  const d = facing(f, o), [a, b, y0, y1] = s.box;
+function boxOf(f, o, s, dir) {
+  const d = dir || facing(f, o), [a, b, y0, y1] = s.box;
   const x1 = f.x + a * d, x2 = f.x + b * d;
   return { x0: Math.min(x1, x2), x1: Math.max(x1, x2), y0: Math.max(0, f.y + y0), y1: f.y + y1 };
 }
@@ -401,6 +487,7 @@ function hurt(f) { const B = BODY[f.key]; return { x0: f.x - B.hw, x1: f.x + B.h
 function overlap(a, b) { return a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0; }
 function targetOf(k, s, p) {
   const f = G.f[k], o = G.f[other(k)], d = facing(f, o);
+  if (s.wait) return { tx: f.x, ty: f.y };
   const tx = clamp(f.x + p * d, TUNE.minX, TUNE.maxX);
   const ty = s.jump ? TUNE.airH : s.id === "hook" ? 0 : f.y;
   return { tx, ty };
@@ -409,9 +496,9 @@ function targetOf(k, s, p) {
 // ---- Yeti learning: remembers what you pick in each situation and tries to predict you ----
 const BRAIN_KEY = "tell.yetiBrain.v1";
 let BRAIN = loadBrain();
-function loadBrain() { try { const b = JSON.parse(localStorage.getItem(BRAIN_KEY)); if (b && b.ctx && b.p) return b; } catch (e) {} return { ctx: {}, p: {} }; }
+function loadBrain() { try { const b = JSON.parse(localStorage.getItem(BRAIN_KEY)); if (b && b.ctx && b.p) { b.fe = b.fe || [0, 0]; b.pv = b.pv || [0, 0]; return b; } } catch (e) {} return { ctx: {}, p: {}, fe: [0, 0], pv: [0, 0] }; }
 function saveBrain() { try { localStorage.setItem(BRAIN_KEY, JSON.stringify(BRAIN)); } catch (e) {} }
-function forgetBrain() { BRAIN = { ctx: {}, p: {} }; saveBrain(); renderReads(); }
+function forgetBrain() { BRAIN = { ctx: {}, p: {}, fe: [0, 0], pv: [0, 0] }; saveBrain(); renderReads(); }
 function band(d) { return d <= 150 ? "Close" : d <= 300 ? "Mid" : "Far"; }
 // most specific first: range + air/ground + your last move, then range + air/ground, then everything
 function ctxKeys() {
@@ -423,6 +510,12 @@ function learn(sid, p, keys) {
   const q = BRAIN.p[sid] || (BRAIN.p[sid] = [0, 0]); q[0] += p; q[1]++;
   saveBrain();
 }
+// how often your attacks get feint-cancelled
+function noteAttack() { BRAIN.fe[1]++; saveBrain(); }
+// how often you answer a visible Yeti attack with Parry or Ice Wall (makes the Yeti feint more)
+function noteDefend(did) { BRAIN.pv[1]++; if (did) BRAIN.pv[0]++; saveBrain(); }
+function defendRate() { return (BRAIN.pv[0] + 0.2) / (BRAIN.pv[1] + 2); }
+function feintRate() { return (BRAIN.fe[0] + 0.3) / (BRAIN.fe[1] + 3); }
 const sumOf = c => c ? Object.values(c).reduce((a, n) => a + n, 0) : 0;
 function avgParam(s) {
   const q = BRAIN.p[s.id], [lo, hi] = paramRange("lulu", s);
@@ -449,14 +542,17 @@ function readValue(opt, pred) {
   pred.list.forEach(({ s: ps, q }) => {
     let x = 0;
     if (ps.guard) {
-      x = s.guard ? -1 : s.type === "move" ? 0.5 : -1.5;
+      x = s.guard || s.parry ? -1 : s.type === "move" ? 0.5 : -1.5;
+    } else if (ps.parry) {
+      x = s.type === "move" ? 0.5 : s.guard || s.parry ? -0.5 : -1.5;
     } else if (ps.type === "move") {
       const t = targetOf("lulu", ps, avgParam(ps)), lu = { ...o, x: t.tx, y: t.ty };
-      if (s.guard) x = -1;
+      if (s.guard || s.parry) x = -1;
       else if (s.type !== "move") x = overlap(boxOf(f, lu, s), hurt(lu)) ? 2.5 : -0.5;
     } else if (ps.box) {
       const hitsNow = overlap(boxOf(o, f, ps), hurt(f)), hitsThere = overlap(boxOf(o, at, ps), hurt(at));
-      if (s.guard) x = hitsNow ? 3 : -0.5;
+      if (s.parry) x = hitsNow ? (Math.abs(startOf("lulu", ps) - opt.p) <= TUNE.parryWin ? 3.5 : -1) : -0.5;
+      else if (s.guard) x = hitsNow ? 3 : -0.5;
       else if (s.type === "move") x = hitsNow && !hitsThere ? 2 : hitsThere ? -1.5 : 0;
       else {
         const reaches = overlap(boxOf(f, o, s), hurt(o)), faster = startOf(k, s) < startOf("lulu", ps);
@@ -475,7 +571,7 @@ function renderReads() {
   const habits = Object.entries(all).sort((a, b) => b[1] - a[1]).slice(0, 3)
     .map(([id, c]) => `${(SKILLS.lulu.find(x => x.id === id) || { name: id }).name} ${Math.round(c / n * 100)}%`).join(", ");
   $("readSum").textContent = guessed ? `Read you ${right}/${guessed}` : "Learning…";
-  el.innerHTML = `<div class="hab">Your habits (${n} moves): ${habits || "none yet"} · <a href="#" id="forget">Forget</a></div>
+  el.innerHTML = `<div class="hab">Your habits (${n} moves): ${habits || "none yet"} · feints ${BRAIN.fe[0]}/${BRAIN.fe[1]} · parried/walled its startups ${BRAIN.pv[0]}/${BRAIN.pv[1]} · <a href="#" id="forget">Forget</a></div>
     <table><tr><th>#</th><th>You</th><th>Range</th><th>Yeti guessed</th><th>Yeti</th><th>Dmg</th></tr>
     ${rows.slice().reverse().map(r => `<tr><td>${r.turn}</td><td>${r.you}</td><td>${r.range}</td>
       <td class="${r.guess ? (r.right ? "ok" : "no") : ""}">${r.guess ? `${r.guess} ${r.gq}%` : "–"}</td><td>${r.yeti}</td>
@@ -483,11 +579,23 @@ function renderReads() {
   $("forget").addEventListener("click", e => { e.preventDefault(); forgetBrain(); });
 }
 
+// What the Yeti can see you doing right now (YOMI: a fighter mid-move is public information; feints look real)
+function yetiSees() {
+  const o = G.f.lulu, f = G.f.yeti, oa = o.act;
+  if (!oa) return o.hs > 0 ? { kind: "busy", remain: o.hs } : null;
+  const os = actSk(oa), remain = oa.end - oa.t;
+  if (isAtk(os) && !os.burst && oa.t < oa.st) return { kind: "atk", r: oa.st - oa.t, hits: overlap(boxOf(o, f, os), hurt(f)), trust: 1 - feintRate(), remain };
+  if (os.guard && oa.t < oa.st + oa.ac) return { kind: "guard", until: oa.st + oa.ac - oa.t, remain };
+  if (os.parry && oa.t <= oa.p + TUNE.parryWin) return { kind: "parry", lo: oa.p - TUNE.parryWin - oa.t, hi: oa.p + TUNE.parryWin - oa.t, remain };
+  return { kind: "busy", remain };
+}
 function aiPick(pred) {
   const k = "yeti", f = G.f[k], o = G.f.lulu, e = emo(k), opts = [];
-  const threatened = SKILLS.lulu.some(s => s.box && !blocked("lulu", s) && overlap(boxOf(o, f, s), hurt(f)));
+  const see = yetiSees();
+  const threatened = see ? see.kind === "atk" && see.hits
+    : SKILLS.lulu.some(s => s.box && !s.burst && !blocked("lulu", s) && overlap(boxOf(o, f, s), hurt(f)));
   SKILLS[k].forEach(s => {
-    if (blocked(k, s)) return;
+    if (s.burst || s.feint || blocked(k, s)) return;
     if (s.type === "move") {
       const [lo, hi] = paramRange(k, s);
       [lo, -60, 60, 120, 200, 280, hi].filter(p => p >= lo && p <= hi).forEach(p => {
@@ -495,195 +603,434 @@ function aiPick(pred) {
         const nd = Math.abs(tx - o.x);
         let sc = e.id === "scared" || f.hp < 25 ? nd / 120 : 3 - Math.abs(nd - 85) / 70;
         if (o.y > 0 && ty > 0) sc += 1;
+        if (see && see.kind === "atk" && see.hits) {
+          const at = { ...f, x: tx, y: ty };
+          if (startOf(k, s) < see.r && !overlap(boxOf(o, at, actSk(o.act)), hurt(at))) sc += 1.5 * see.trust;
+        }
+        if (see && see.kind === "guard") sc += 0.5;
         opts.push({ s, p, sc });
       });
     } else if (s.guard) {
-      opts.push({ s, p: 0, sc: threatened ? 2.6 + (f.hp < 40 ? 1 : 0) : -1 });
+      let sc = threatened ? 2.6 + (f.hp < 40 ? 1 : 0) : -1;
+      if (see) sc = see.kind === "atk" && see.hits && startOf(k, s) <= see.r ? 3 + 2 * see.trust : -2;
+      opts.push({ s, p: 0, sc });
+    } else if (s.parry) {
+      if (see) {
+        if (see.kind === "atk" && see.hits && see.r >= 2) opts.push({ s, p: see.r, sc: 1 + 4 * see.trust });
+      } else if (pred) {
+        const sts = [...new Set(SKILLS.lulu.filter(ps => isAtk(ps) && !ps.burst && !blocked("lulu", ps) && overlap(boxOf(o, f, ps), hurt(f))).map(ps => startOf("lulu", ps)))];
+        sts.filter(p => p >= 2 && p <= 24).forEach(p => opts.push({ s, p, sc: -0.6 }));
+      }
     } else {
       const bx = boxOf(f, o, s);
       const now = overlap(bx, hurt(o));
       const near = [-70, 70].some(dx => overlap(bx, hurt({ ...o, x: o.x + dx })));
+      const st = startOf(k, s);
       let sc = now ? 4 + hitsOf(k, s) * s.dmg / 6 : near ? 1.6 : 0.2;
-      if (now && (o.stag || o.chill)) sc += 2;
-      if (now && startOf(k, s) >= 12 && dist(k) < 110) sc -= 1.5;
+      if (now && (o.hs > 0 || o.chill)) sc += 2;
+      if (now && st >= 12 && dist(k) < 110) sc -= 1.5;
       if (s.type === "spc" && now) sc += 1.2;
+      if (see) {
+        if (see.kind === "atk" && see.hits) sc += now && st < see.r ? 2.5 * see.trust : -2 * see.trust;
+        if (see.kind === "busy" && now && st <= see.remain) sc += 3;
+        if (see.kind === "guard" && now && st <= see.until) sc -= 2.5;
+        if (see.kind === "parry") sc += st >= see.lo && st <= see.hi ? -3 : now && st > see.hi ? 2 : 0;
+      }
       opts.push({ s, p: 0, sc });
     }
   });
-  if (!opts.length) return { s: HOLD, p: 0 };
+  if (!opts.length) return { s: HOLD, p: 3 };
   if (pred) opts.forEach(x => x.sc += readValue(x, pred));
   opts.forEach(x => x.w = Math.exp(x.sc * 0.5));
-  let r = Math.random() * opts.reduce((a, x) => a + x.w, 0);
-  for (const x of opts) { r -= x.w; if (r <= 0) return x; }
-  return opts[0];
+  let r = Math.random() * opts.reduce((a, x) => a + x.w, 0), pick = opts[0];
+  for (const x of opts) { r -= x.w; if (r <= 0) { pick = x; break; } }
+  return { s: pick.s, p: pick.p };
+}
+// Yeti stuck in your combo: maybe Burst
+function aiStun() {
+  const f = G.f.yeti, b = SK("yeti", "burst");
+  if (!blocked("yeti", b) && (f.combo >= 8 || f.hp < 35 || Math.random() < 0.3)) { startAct("yeti", b, 0); return "Burst"; }
+  return "(in hitstun)";
+}
+// Yeti gets a turn while its own skill is still playing: cancel it?
+function aiWantsFeint() {
+  const f = G.f.yeti, a = f.act, s = actSk(a), lu = G.f.lulu;
+  let p = 0;
+  if (isAtk(s) && a.t < a.st) p = overlap(boxOf(f, lu, s, a.dir), hurt(lu)) ? 0.08 + 0.5 * defendRate() : 0.6;
+  else if (isAtk(s) && !a.landed && a.t >= a.st + a.ac) p = 0.4;
+  else if (s.guard || s.parry) p = 0.15;
+  return Math.random() < p;
+}
+function doFeint(k, push) {
+  const f = G.f[k], s = actSk(f.act);
+  endAct(k, "feint");
+  f.fcd = TUNE.feintCd; G.stats.feints[k]++;
+  if (k === "lulu" && isAtk(s)) { BRAIN.fe[0]++; saveBrain(); }
+  push(`${NAMES[k].name} FEINTS out of ${s.name}!`, "emo", { pops: [{ x: f.x, y: f.y + BODY[k].h + 30, t: "FEINT", c: "#ffd23a", big: true }] });
 }
 
 function snap() { return JSON.parse(JSON.stringify(G.f)); }
 
-function resolve(P) {
-  const ev = [];
-  const startEmo = { lulu: emo("lulu"), yeti: emo("yeti") };
-  const A = {}, hit = { lulu: false, yeti: false }, stagHit = { lulu: false, yeti: false }, airAct = { lulu: false, yeti: false }, chillNext = { lulu: false, yeti: false };
-  const push = (text, cls, extra) => ev.push(Object.assign({ text, cls: cls || "", f: snap(), pops: [], frame: cur }, extra || {}));
-  let cur = 0;
-  KEYS.forEach(k => {
-    const s = P[k].s, f = G.f[k];
-    f.light -= cost(k, s);
-    const st = startOf(k, s);
-    A[k] = { s, p: P[k].p, st, ac: s.ac || 0, rc: s.rc || 0, end: st + (s.ac || 0) + (s.rc || 0), hits: hitsOf(k, s), dir: facing(f, G.f[other(k)]), cancelled: false, landed: false, started: false, over: false };
-    f.pose = "idle"; f.guard = false; f.wind = false;
-    const wa = s.pose && SHEETS[k].anims && SHEETS[k].anims[s.pose];
-    if (wa && wa.hit && s.type !== "move" && !s.guard) { f.pose = s.pose; f.wind = true; }
-  });
-  const total = Math.max(A.lulu.end, A.yeti.end);
-  const tl = {};
-  KEYS.forEach(kk => { tl[kk] = { name: A[kk].s.name, st: A[kk].st, ac: A[kk].ac, rc: A[kk].rc, type: A[kk].s.type }; });
-  tl.total = total;
-  push(`You: ${A.lulu.s.name} (${A.lulu.st}f to hit).  Yeti: ${A.yeti.s.name} (${A.yeti.st}f to hit).`, "t", { tl });
-  const live = k => !A[k].cancelled && !A[k].over;
-  for (cur = 1; cur <= total; cur++) {
-    KEYS.forEach(k => {
-      const a = A[k], f = G.f[k];
-      if (a.cancelled || a.over) return;
-      if (a.s.guard) {
-        if (cur === a.st) { f.guard = true; f.pose = a.s.pose; a.started = true; push(`${NAMES[k].name} raises ${a.s.name}.`); }
-        if (cur === a.st + a.ac) f.guard = false;
-      }
-      if (cur === a.end) { a.over = true; f.pose = f.y > 0 ? "air" : "idle"; }
-    });
-    const movers = KEYS.filter(k => live(k) && A[k].s.type === "move" && cur === A[k].st);
-    const tgt = {};
-    movers.forEach(k => {
-      const f = G.f[k], a = A[k];
-      tgt[k] = { tx: clamp(f.x + a.p * a.dir, TUNE.minX, TUNE.maxX), ty: a.s.jump ? TUNE.airH : a.s.id === "hook" ? 0 : f.y };
-    });
-    movers.forEach(k => {
-      const f = G.f[k], o = G.f[other(k)], a = A[k];
-      const ox = movers.includes(other(k)) ? tgt[other(k)].tx : o.x;
-      const oy = movers.includes(other(k)) ? tgt[other(k)].ty : o.y;
-      let { tx, ty } = tgt[k];
-      if (Math.abs(ty - oy) < 60) {
-        const side = Math.sign(f.x - o.x) || -a.dir;
-        if (Math.sign(tx - ox) !== side || Math.abs(tx - ox) < TUNE.gap) tx = clamp(ox + side * TUNE.gap, TUNE.minX, TUNE.maxX);
-      }
-      tgt[k] = { tx, ty };
-    });
-    movers.forEach(k => {
-      const f = G.f[k], a = A[k];
-      f.x = tgt[k].tx; f.y = tgt[k].ty;
-      if (a.s.jump) airAct[k] = true;
-      f.pose = a.s.pose || (f.y > 0 ? "air" : a.s === HOLD ? "idle" : a.p < 0 ? "back" : "walk");
-    });
-    if (movers.length) push(movers.map(k => `${NAMES[k].name} finishes ${A[k].s.name}.`).join(" "), "", { trail: movers.filter(k => ["slide", "charge", "hook"].includes(A[k].s.id)) });
-    const wasLive = {};
-    KEYS.forEach(k => { wasLive[k] = live(k) && A[k].s.type !== "move" && !A[k].s.guard && cur < A[k].st + A[k].ac; });
-    const swinging = KEYS.filter(k => live(k) && A[k].s.type !== "move" && !A[k].s.guard && cur >= A[k].st && cur < A[k].st + A[k].ac);
-    const startedNow = swinging.filter(k => !A[k].started);
-    startedNow.forEach(k => { A[k].started = true; G.f[k].pose = A[k].s.pose; G.f[k].wind = false; if (A[k].s.air) airAct[k] = true; });
-    const landedNow = [];
-    swinging.forEach(k => {
-      const a = A[k];
-      if (a.landed) return;
-      const f = G.f[k], o = G.f[other(k)];
-      a.bx = boxOf(f, o, a.s);
-      if (overlap(a.bx, hurt(o))) landedNow.push(k);
-    });
-    const fxBase = k => ({ k, bx: A[k].bx || boxOf(G.f[k], G.f[other(k)], A[k].s), proj: A[k].s.proj || null, from: { x: G.f[k].x, y: G.f[k].y + BODY[k].h * 0.6 }, dir: A[k].dir, sid: A[k].s.id });
-    if (!landedNow.length && startedNow.length) push("", "", {});
-    landedNow.forEach(k => {
-      const a = A[k], s = a.s, ok = other(k), of = G.f[ok], af = G.f[k], oa = A[ok];
-      a.landed = true;
-      const fxb = Object.assign(fxBase(k), { hit: true });
-      const guarded = of.guard;
-      const n = a.hits;
-      let dmg = n * s.dmg;
-      if (guarded) dmg = Math.ceil(dmg / 2);
-      of.hp = Math.max(0, of.hp - dmg);
-      hit[ok] = true;
-      if (!guarded) { stagHit[ok] = true; of.pose = "hurt"; }
-      of.x = clamp(of.x + facing(af, of) * TUNE.push * (guarded ? 0.5 : 1), TUNE.minX, TUNE.maxX);
-      G.stats.dmg[k] += dmg;
-      const pops = [{ x: of.x, y: of.y + BODY[ok].h + 10, t: `-${dmg}`, c: "#ffd23a" }];
-      if (guarded) { G.stats.guarded[ok]++; pops.push({ x: of.x, y: of.y + BODY[ok].h + 34, t: "BLOCKED", c: "#8fe3ff", big: true }); }
-      push(`Frame ${cur}: ${NAMES[k].name}'s ${s.name} lands ${n} hits for ${dmg} damage${guarded ? " (blocked, half damage)" : ""}.`, ok === "lulu" ? "bad" : "", { box: fxb, spark: { x: of.x, y: of.y + BODY[ok].h * 0.6 }, pops });
-      if (!guarded && wasLive[ok]) {
-        addSan(of, -TUNE.counterLoss);
-        G.stats.counters[k]++;
-        push(`Counter-hit! ${NAMES[ok].name} was mid-attack and loses ${TUNE.counterLoss} Sanity.`, "bad", { pops: [{ x: of.x, y: of.y + BODY[ok].h + 40, t: "COUNTER", c: "#ff8a2a", big: true }] });
-      }
-      if (!guarded && !oa.over && !oa.cancelled && cur < oa.st && !landedNow.includes(ok)) {
-        oa.cancelled = true; of.pose = "hurt";
-        push(`${NAMES[ok].name}'s ${oa.s.name} is interrupted before it comes out.`);
-      }
-      if (s.san && !guarded) { addSan(of, -s.san); push(`${NAMES[ok].name} loses ${s.san} Sanity.`, "bad"); }
-      if (s.chill && !guarded) { chillNext[ok] = true; push(`${NAMES[ok].name} is Chilled: +${TUNE.chill} frames to start moves next turn.`, "emo"); }
-      if (!guarded) {
-        const before = of.combo;
-        of.combo += n;
-        G.stats.bestCombo[k] = Math.max(G.stats.bestCombo[k], of.combo);
-        for (let t = TUNE.comboStart; t <= of.combo; t += TUNE.comboStep) {
-          if (before < t) {
-            addSan(af, TUNE.comboSan); addSan(of, -TUNE.comboSan);
-            push(`${t}-hit combo! ${NAMES[k].name} +${TUNE.comboSan} Sanity, ${NAMES[ok].name} -${TUNE.comboSan}.`, "emo", { pops: [{ x: of.x, y: of.y + BODY[ok].h + 64, t: `${t} HITS`, c: "#ffffff", big: true }] });
-          }
-        }
-      }
-    });
-    KEYS.forEach(k => {
-      const a = A[k];
-      if (live(k) && a.s.type !== "move" && !a.s.guard && !a.landed && cur === a.st + a.ac - 1) {
-        push(`${NAMES[k].name}'s ${a.s.name} misses.`, "", { box: Object.assign(fxBase(k), { hit: false }) });
-      }
-    });
-    if (G.f.lulu.hp <= 0 || G.f.yeti.hp <= 0) break;
+// ---- the frame engine ----
+function startAct(k, s, p, opt) {
+  opt = opt || {};
+  const f = G.f[k], o = G.f[other(k)], e = emo(k);
+  f.light -= cost(k, s);
+  const st = s.wait ? Math.max(1, p) : startOf(k, s);
+  let ac = s.wait ? 0 : s.ac || 0, rc = s.wait ? 0 : s.rc || 0, end = st + ac + rc;
+  if (s.parry) { ac = 0; end = p + TUNE.parryWin + rc; }
+  f.dir = facing(f, o);
+  const a = { k, sid: s.id, p, t: 0, st, ac, rc, end, hits: hitsOf(k, s), dir: f.dir, landed: false, started: false, xemo: !!e.extreme };
+  f.act = a; f.chill = false; f.guard = false; f.parry = false; f.inv = false;
+  if (s.burst) { f.hs = 0; f.stun = false; f.blk = false; f.combo = 0; f.cmoves = 0; f.burst = 0; f.inv = true; G.stats.bursts[k]++; }
+  f.pose = f.y > 0 ? "air" : "idle"; f.wind = false;
+  const wa = s.pose && SHEETS[k].anims && SHEETS[k].anims[s.pose];
+  if (wa && wa.hit && s.type !== "move" && !s.guard) { f.pose = s.pose; f.wind = true; }
+  if (s.burst) f.pose = s.pose;
+  return a;
+}
+function endAct(k, why) {
+  const f = G.f[k], a = f.act;
+  if (!a) return;
+  const s = actSk(a);
+  f.act = null; f.guard = false; f.parry = false; f.inv = false;
+  if (a.xemo && (f.san <= TUNE.sanMin || f.san >= TUNE.sanMax)) f.san += f.san < 0 ? TUNE.extremeRecover : -TUNE.extremeRecover;
+  if (why !== "hit") {
+    f.pose = f.y > 0 ? "air" : "idle"; f.wind = false;
   }
+}
+function stepFrame(cur, push) {
+  G.frame++;
+  const A = { lulu: G.f.lulu.act, yeti: G.f.yeti.act };
+  KEYS.forEach(k => {
+    const f = G.f[k], o = G.f[other(k)];
+    if (A[k]) A[k].t++;
+    f.burst = Math.min(TUNE.burstMax, f.burst + TUNE.burstPerFrame);
+    if (++f.lc >= TUNE.lightEvery) { f.lc = 0; f.light = Math.min(TUNE.lightMax, f.light + 1); }
+    if (f.hs > 0) {
+      f.hs--;
+      if (f.hs === 0) {
+        if (f.stun) { f.stun = false; f.combo = 0; f.cmoves = 0; if (!f.act) f.pose = f.y > 0 ? "air" : "idle"; }
+        f.blk = false;
+      }
+    }
+  });
+  // guard, parry windows, invincibility, feints
+  KEYS.forEach(k => {
+    const a = A[k]; if (!a) return;
+    const f = G.f[k], s = actSk(a);
+    if (s.guard) {
+      if (a.t === a.st) { f.guard = true; f.pose = s.pose; a.started = true; push(`${NAMES[k].name} raises ${s.name}.`); }
+      if (a.t === a.st + a.ac) f.guard = false;
+    }
+    if (s.parry) {
+      const on = Math.abs(a.t - a.p) <= TUNE.parryWin;
+      if (on !== f.parry) f.pose = on ? s.pose : "idle";
+      f.parry = on;
+    }
+    if (s.burst) f.inv = a.t < a.st + a.ac;
+  });
+  // movement: on the first frame after startup the move kicks in as velocity (YOMI-style momentum)
+  const movers = KEYS.filter(k => { const a = A[k], s = a && actSk(a); return s && s.type === "move" && !s.wait && a.t === a.st; });
+  const sp = (dd, fr) => Math.sqrt(2 * fr * Math.abs(dd));
+  movers.forEach(k => {
+    const f = G.f[k], a = A[k], s = actSk(a), d = a.dir, p = a.p, sg = Math.sign(p);
+    if (s.jump) { f.vy = TUNE.jumpV[k]; f.vx = d * p / 22; }
+    else if (s.id === "slide") { f.slick = TUNE.slickT; f.vx = d * sg * sp(p, TUNE.slickFric); }
+    else if (s.id === "hook") { f.vx = d * sg * sp(p, TUNE.fricG); if (f.y > 0) f.vy = Math.min(f.vy, -14); }
+    else f.vx = d * sg * sp(p, TUNE.fricG);
+    f.pose = s.pose || (s.jump ? "air" : p < 0 ? "back" : "walk");
+  });
+  if (movers.length) push(movers.map(k => `${NAMES[k].name}: ${actSk(A[k]).name}!`).join(" "));
+  // air attacks plunge
+  KEYS.forEach(k => { const a = A[k], s = a && actSk(a); if (s && s.air && isAtk(s) && a.t === a.st) G.f[k].vy = Math.min(G.f[k].vy, -TUNE.plunge); });
+  // attacks
+  const wasLive = {};
+  KEYS.forEach(k => { const a = A[k], s = a && actSk(a); wasLive[k] = !!(s && isAtk(s) && !s.burst && a.t < a.st + a.ac); });
+  const swinging = KEYS.filter(k => { const a = A[k]; if (!a) return false; const s = actSk(a); return isAtk(s) && a.t >= a.st && a.t < a.st + a.ac; });
+  const startedNow = swinging.filter(k => !A[k].started);
+  startedNow.forEach(k => { const s = actSk(A[k]); A[k].started = true; G.f[k].pose = s.pose; G.f[k].wind = false; });
+  const landedNow = [];
+  swinging.forEach(k => {
+    const a = A[k];
+    if (a.landed) return;
+    const f = G.f[k], o = G.f[other(k)];
+    if (o.inv) return;
+    a.bx = boxOf(f, o, actSk(a), a.dir);
+    if (overlap(a.bx, hurt(o))) landedNow.push(k);
+  });
+  const fxBase = k => { const s = actSk(A[k]); return { k, bx: A[k].bx || boxOf(G.f[k], G.f[other(k)], s, A[k].dir), proj: s.proj || null, from: { x: G.f[k].x, y: G.f[k].y + BODY[k].h * 0.6 }, dir: A[k].dir, sid: s.id }; };
+  if (!landedNow.length && startedNow.length) push("", "", {});
+  landedNow.forEach(k => {
+    const a = A[k], s = actSk(a), ok = other(k), of = G.f[ok], af = G.f[k], oa = A[ok];
+    a.landed = true;
+    const fxb = Object.assign(fxBase(k), { hit: true });
+    const d = facing(af, of);
+    // Parry: the hit is caught, the parrier acts right away
+    if (of.parry && !s.burst) {
+      endAct(ok, "parry");
+      of.light = Math.min(TUNE.lightMax, of.light + 1);
+      addSan(of, TUNE.parrySan); addSan(af, -TUNE.parrySan);
+      G.stats.parries[ok]++;
+      of.pose = "idle";
+      push(`Frame ${cur}: ${NAMES[ok].name} PARRIES ${NAMES[k].name}'s ${s.name}! +${TUNE.parrySan} Sanity, +1 Light, free to act.`, ok === "lulu" ? "emo" : "bad",
+        { box: Object.assign(fxb, { hit: false }), parry: ok, pops: [{ x: of.x, y: of.y + BODY[ok].h + 30, t: "PARRY", c: "#ffffff", big: true }] });
+      return;
+    }
+    // Burst: no damage, knocks the attacker away and breaks the combo
+    if (s.burst) {
+      if (of.act) endAct(ok, "hit");
+      of.hs = TUNE.burstHs; of.stun = true; of.blk = false; of.guard = false; of.pose = "hurt";
+      knock(of, s, d);
+      push(`Frame ${cur}: ${NAMES[k].name}'s Burst blasts ${NAMES[ok].name} away!`, ok === "lulu" ? "bad" : "emo",
+        { box: fxb, spark: { x: of.x, y: of.y + BODY[ok].h * 0.6 }, pops: [{ x: of.x, y: of.y + BODY[ok].h + 34, t: "BURST", c: "#c4b0ea", big: true }] });
+      return;
+    }
+    const guarded = of.guard;
+    const n = a.hits, scale = Math.max(TUNE.minScale, 1 - TUNE.comboScale * of.cmoves);
+    const dmg = guarded ? Math.ceil(n * s.dmg / 2) : Math.max(1, Math.round(n * s.dmg * scale));
+    of.hp = Math.max(0, of.hp - dmg);
+    of.burst = Math.min(TUNE.burstMax, of.burst + dmg * TUNE.burstPerDmg);
+    G.stats.dmg[k] += dmg;
+    const rem = Math.max(0, a.end - a.t);
+    const pops = [{ x: of.x, y: of.y + BODY[ok].h + 10, t: `-${dmg}`, c: "#ffd23a" }];
+    if (guarded) {
+      G.stats.guarded[ok]++;
+      of.hs = Math.max(of.hs, Math.max(1, rem + TUNE.blockAdv)); of.blk = true;
+      of.vx = d * (s.kb ? s.kb[2] : 12) * 0.5;
+      pops.push({ x: of.x, y: of.y + BODY[ok].h + 34, t: "BLOCKED", c: "#8fe3ff", big: true });
+      push(`Frame ${cur}: ${NAMES[k].name}'s ${s.name} lands ${n} hits for ${dmg} damage (blocked, half damage).`, ok === "lulu" ? "bad" : "", { box: fxb, spark: { x: of.x, y: of.y + BODY[ok].h * 0.6 }, pops });
+      return;
+    }
+    const counter = wasLive[ok];
+    const hs = Math.max(TUNE.hsMin, rem + (s.adv || 2) + (counter ? TUNE.counterHs : 0) - TUNE.hsDecay * of.cmoves);
+    if (oa && of.act === oa) {
+      if (oa.t < oa.st && isAtk(actSk(oa)) && !landedNow.includes(ok)) push(`${NAMES[ok].name}'s ${actSk(oa).name} is interrupted before it comes out.`);
+      endAct(ok, "hit");
+    }
+    of.hs = hs; of.stun = true; of.blk = false; of.guard = false; of.pose = "hurt";
+    knock(of, s, d);
+    push(`Frame ${cur}: ${NAMES[k].name}'s ${s.name} lands ${n} hits for ${dmg} damage. ${NAMES[ok].name} is in hitstun for ${hs}f (${hs - rem >= 0 ? "+" : ""}${hs - rem} on hit).`,
+      ok === "lulu" ? "bad" : "", { box: fxb, spark: { x: of.x, y: of.y + BODY[ok].h * 0.6 }, pops });
+    if (counter) {
+      addSan(of, -TUNE.counterLoss);
+      G.stats.counters[k]++;
+      push(`Counter-hit! ${NAMES[ok].name} was mid-attack: -${TUNE.counterLoss} Sanity, +${TUNE.counterHs}f hitstun.`, "bad", { pops: [{ x: of.x, y: of.y + BODY[ok].h + 40, t: "COUNTER", c: "#ff8a2a", big: true }] });
+    }
+    if (s.san) { addSan(of, -s.san); push(`${NAMES[ok].name} loses ${s.san} Sanity.`, "bad"); }
+    if (s.chill) { of.chill = true; push(`${NAMES[ok].name} is Chilled: +${TUNE.chill} frames on their next move.`, "emo"); }
+    const before = of.combo;
+    of.combo += n; of.cmoves++;
+    G.stats.bestCombo[k] = Math.max(G.stats.bestCombo[k], of.combo);
+    for (let t = TUNE.comboStart; t <= of.combo; t += TUNE.comboStep) {
+      if (before < t) {
+        addSan(af, TUNE.comboSan); addSan(of, -TUNE.comboSan);
+        push(`${t}-hit combo! ${NAMES[k].name} +${TUNE.comboSan} Sanity, ${NAMES[ok].name} -${TUNE.comboSan}.`, "emo", { pops: [{ x: of.x, y: of.y + BODY[ok].h + 64, t: `${t} HITS`, c: "#ffffff", big: true }] });
+      }
+    }
+  });
+  KEYS.forEach(k => {
+    const a = A[k];
+    if (!a || a.landed || G.f[k].act !== a) return;
+    const s = actSk(a);
+    if (isAtk(s) && !s.burst && a.t === a.st + a.ac - 1) push(`${NAMES[k].name}'s ${s.name} misses.`, "", { box: Object.assign(fxBase(k), { hit: false }) });
+  });
+  KEYS.forEach(k => { const f = G.f[k], a = f.act; if (a && a === A[k] && a.t >= a.end) endAct(k, "end"); });
+  physics(push);
+}
+// knockback is a velocity in the hit's direction (like YOMI)
+function knock(of, s, d) {
+  const kb = s.kb || [1, 0.1, 12];
+  const vx = kb[0] * d, vy = kb[1];
+  const len = Math.hypot(vx, vy) || 1;
+  of.vx = vx / len * kb[2]; of.vy = vy / len * kb[2];
+  if (of.y <= 0 && of.vy < 0) of.vy = 0;
+}
+const towardZero = (v, d) => v > 0 ? Math.max(0, v - d) : Math.min(0, v + d);
+function physics(push) {
   KEYS.forEach(k => {
     const f = G.f[k];
-    if (!hit[k]) f.combo = 0;
-    f.stag = stagHit[k];
-    f.chill = chillNext[k];
-    f.guard = false;
-    if (startEmo[k].extreme && (f.san <= TUNE.sanMin || f.san >= TUNE.sanMax)) f.san += f.san < 0 ? TUNE.extremeRecover : -TUNE.extremeRecover;
-    if (f.y > 0 && !airAct[k]) f.y = 0;
-    if (f.y > 0 && P[k].s.air) f.y = 0;
-    f.light = Math.min(TUNE.lightMax, f.light + TUNE.lightRegen);
-    f.dir = facing(f, G.f[other(k)]);
-    f.pose = f.y > 0 ? "air" : "idle"; f.wind = false;
+    const air = f.y > 0 || f.vy > 0;
+    if (air) { f.vy = Math.max(-TUNE.maxFall, f.vy - TUNE.grav); f.vx = towardZero(f.vx, TUNE.fricA); }
+    else f.vx = towardZero(f.vx, f.slick > 0 ? TUNE.slickFric : f.stun ? TUNE.fricStun : TUNE.fricG);
+    if (f.slick > 0) f.slick--;
+    if (!f.stun) { const cap = air ? TUNE.maxA : TUNE.maxG[k]; f.vx = clamp(f.vx, -cap, cap); }
+    f.x += f.vx;
+    const ny = f.y + f.vy;
+    if (ny <= 0 && (f.y > 0 || f.vy < 0)) { f.y = 0; f.vy = 0; }
+    else f.y = Math.max(0, ny);
+    if (f.x < TUNE.minX || f.x > TUNE.maxX) {
+      f.x = f.x < TUNE.minX ? TUNE.minX : TUNE.maxX;
+      if (f.stun && Math.abs(f.vx) > TUNE.wallBounce) {
+        f.vx = -f.vx * 0.5;
+        push(`${NAMES[k].name} bounces off the ice wall!`, "emo", { pops: [{ x: f.x, y: f.y + BODY[k].h + 20, t: "WALL", c: "#ffffff", big: true }] });
+      } else f.vx = 0;
+    }
+    if (!f.act && !f.stun && f.hs <= 0) {
+      f.dir = facing(f, G.f[other(k)]);
+      f.pose = f.y > 0 ? "air" : f.slick > 0 && Math.abs(f.vx) > 3 ? "slide" : Math.abs(f.vx) > 4 ? (Math.sign(f.vx) === f.dir ? "walk" : "back") : "idle";
+    }
   });
+  // pushboxes: no walking through each other on the ground; jumping over is fine
+  const L = G.f.lulu, Y = G.f.yeti, gap = TUNE.gap, side = L.side || 1;
+  if (Math.abs(L.y - Y.y) < 100 && (Math.sign(Y.x - L.x) !== side || Math.abs(Y.x - L.x) < gap)) {
+    const mid = clamp((L.x + Y.x) / 2, TUNE.minX + gap / 2, TUNE.maxX - gap / 2);
+    L.x = mid - side * gap / 2; Y.x = mid + side * gap / 2;
+    if ((Y.vx - L.vx) * side < 0) { const v = (L.vx + Y.vx) / 2; L.vx = v; Y.vx = v; }
+  }
+  if (Y.x !== L.x) L.side = Math.sign(Y.x - L.x);
+}
+// Runs frames until you have a decision: you're free, or you're in hitstun and the Yeti is free (DI / Burst).
+// When only the Yeti is free, it decides on the spot and the frames keep running.
+function runSegment(push, onYetiFree, onFrame) {
+  let cur;
+  for (cur = 1; cur <= TUNE.maxSeg; cur++) {
+    segCur = cur;
+    stepFrame(cur, push);
+    if (G.f.lulu.hp <= 0 || G.f.yeti.hp <= 0) { onFrame(cur); return { cur, stop: "ko" }; }
+    if (free("lulu") || (free("yeti") && (canFeint("lulu") || (stunned("lulu") && G.f.lulu.burst >= TUNE.burstMax)))) { onFrame(cur); return { cur, stop: "lulu" }; }
+    if (free("yeti")) onYetiFree(cur);
+    if (free("yeti")) startAct("yeti", HOLD, 3);
+    onFrame(cur);
+  }
+  return { cur, stop: "cap" };
+}
+const labelOf = (s, p, feint) => (feint ? "Feint → " : "") + (s.wait ? `${s.name} ${p}f` : s.parry ? `${s.name} @${p}f` : s.type === "move" ? `${s.name} ${p > 0 ? "+" : ""}${p}` : s.name);
+
+function commit() {
+  if (busy || G.over) return;
+  const mode = luluMode();
+  const feinting = mode === "mid" && feintArmed && !!sel;
+  if (mode === "act" && !sel) return;
+  if (mode === "mid" && feintArmed && !sel) return;
+  const choosing = mode === "act" || feinting;
+  busy = true;
+  closeInsp();
+  peek = null; ghost = null; renderEnemy();
+  const start = snap();
+  const frames = [];
+  let pend = [];
+  segCur = 0;
+  const push = (text, cls, extra) => pend.push(Object.assign({ text, cls: cls || "", pops: [], frame: segCur }, extra || {}));
+  const onFrame = c => { frames.push({ c, f: snap(), ev: pend }); pend = []; };
+  const startEmo = { lulu: emo("lulu"), yeti: emo("yeti") };
+  const row = { turn: G.turn, range: band(dist("lulu")), done: false, guess: "", gq: 0, right: false, you: "", yeti: "" };
+  let pred = null;
+  KEYS.forEach(k => { if (G.f[k].fcd > 0) G.f[k].fcd--; });
+  // the Yeti may feint out of its own skill when it gets a turn mid-skill
+  const yDid = [];
+  if (!free("yeti") && canFeint("yeti") && aiWantsFeint()) { const nm = actSk(G.f.yeti.act).name; doFeint("yeti", push); yDid.push(`Feint out of ${nm}`); }
+  if (choosing) {
+    const keys = ctxKeys();
+    if (free("yeti")) {
+      pred = predict();
+      const top = pred.list[0];
+      row.guess = top && pred.conf >= 0.2 ? top.s.name : ""; row.gq = top ? Math.round(top.q * 100) : 0; row.right = !!top && top.s.id === sel.s.id;
+    }
+    learn(sel.s.id, sel.p || 0, keys);
+    if (isAtk(sel.s) && !sel.s.burst) noteAttack();
+    const ya0 = G.f.yeti.act, ys0 = ya0 && actSk(ya0);
+    if (ys0 && isAtk(ys0) && !ys0.burst && ya0.t < ya0.st) noteDefend(!!(sel.s.parry || sel.s.guard));
+    G.lastLulu = sel.s.id;
+    row.you = labelOf(sel.s, sel.p, feinting);
+  } else row.you = sel && sel.s.burst ? "Burst" : mode === "mid" ? `(continue ${actSk(G.f.lulu.act).name})` : "Hold";
+  // the Yeti decides at the same moment you do (it can't see your pick, or that you're about to feint)
+  if (free("yeti")) { const ai = aiPick(pred); startAct("yeti", ai.s, ai.p); yDid.push(labelOf(ai.s, ai.p)); }
+  else if (stunned("yeti")) yDid.push(aiStun());
+  else if (!yDid.length) yDid.push(`(mid ${actSk(G.f.yeti.act).name})`);
+  if (feinting) doFeint("lulu", push);
+  if (choosing) startAct("lulu", sel.s, sel.p);
+  else if (sel && sel.s.burst) startAct("lulu", sel.s, 0);
+  feintArmed = false;
+  const la = G.f.lulu.act, ya = G.f.yeti.act;
+  const desc = (k, a) => a ? `${actSk(a).name}${isAtk(actSk(a)) ? ` (${Math.max(0, a.st - a.t)}f to hit)` : ""}` : `${G.f[k].stun ? "hitstun" : "blockstun"} ${G.f[k].hs}f`;
+  push(`You: ${desc("lulu", la)}.  Yeti: ${desc("yeti", ya)}.`, "t");
+  onFrame(0);
+  const res = runSegment(push, c => {
+    const ai = aiPick(null);
+    startAct("yeti", ai.s, ai.p);
+    yDid.push(labelOf(ai.s, ai.p));
+    push(`Frame ${c}: the Yeti is free and goes for ${ai.s.name}.`);
+  }, onFrame);
+  segCur = res.cur;
+  KEYS.forEach(k => { const f = G.f[k]; if (!f.act) { f.dir = facing(f, G.f[other(k)]); if (!f.hs) { f.pose = f.y > 0 ? "air" : "idle"; f.wind = false; } } });
   const em = [];
   KEYS.forEach(k => {
     const a = startEmo[k], b = emo(k);
     if (a.id !== b.id) { if (b.id === "scared") G.stats.scared[k]++; em.push({ k, b }); }
   });
-  cur = total;
   push(em.map(({ k, b }) => `${NAMES[k].name} is now ${b.name}.`).join(" "), em.length ? "emo" : "", { pops: em.map(({ k, b }) => ({ x: G.f[k].x, y: G.f[k].y + BODY[k].h + 50, t: b.name.toUpperCase(), c: k === "lulu" ? "#8fe3ff" : "#ff8a2a", big: true })) });
-  return ev;
+  const final = snap();
+  const last = frames[frames.length - 1];
+  last.ev.push(...pend); last.f = final;
+  row.dealt = start.yeti.hp - final.yeti.hp; row.took = start.lulu.hp - final.lulu.hp;
+  row.yeti = yDid.join(" → ");
+  G.reads.push(row);
+  G.f = JSON.parse(JSON.stringify(start));
+  sel = null;
+  G.history.push({ start: JSON.parse(JSON.stringify(start)), frames, final: JSON.parse(JSON.stringify(final)), turn: G.turn });
+  startAnim(frames, final, false);
+  ui();
 }
 
-function commit() {
-  if (!sel || busy || G.over) return;
-  busy = true;
-  closeInsp();
-  peek = null; renderEnemy();
-  const pred = predict(), keys = ctxKeys(), top = pred.list[0];
-  const ai = aiPick(pred);
-  const you = sel.s.type === "move" ? `${sel.s.name} ${sel.p > 0 ? "+" : ""}${sel.p}` : sel.s.name;
-  const row = { turn: G.turn, you, range: band(dist("lulu")), yeti: ai.s.name, done: false,
-    guess: top && pred.conf >= 0.2 ? top.s.name : "", gq: top ? Math.round(top.q * 100) : 0, right: !!top && top.s.id === sel.s.id };
-  learn(sel.s.id, sel.p || 0, keys);
-  G.lastLulu = sel.s.id;
-  const start = snap();
-  const ev = resolve({ lulu: { s: sel.s, p: sel.p }, yeti: { s: ai.s, p: ai.p } });
-  const final = snap();
-  row.dealt = start.yeti.hp - final.yeti.hp; row.took = start.lulu.hp - final.lulu.hp;
-  G.reads.push(row);
-  G.f = start;
-  sel = null;
-  G.history.push({ start: JSON.parse(JSON.stringify(start)), ev, final: JSON.parse(JSON.stringify(final)), turn: G.turn });
-  anim = { ev, i: -1, t0: 0, from: start, final };
-  ui();
-  nextEvent();
+// ---- Ghost: play your pick forward on a copy of the fight before you lock in ----
+function ghostSnap(c) {
+  const g = { c, bx: [] };
+  KEYS.forEach(k => {
+    const f = G.f[k], o = G.f[other(k)];
+    g[k] = { x: f.x, y: f.y, pose: f.pose, dir: f.dir, chill: f.chill, hs: f.hs };
+    const a = f.act, s = a && actSk(a);
+    if (s && isAtk(s) && !a.landed && a.t >= a.st && a.t < a.st + a.ac) g.bx.push({ k, r: boxOf(f, o, s) });
+  });
+  return g;
 }
+function updateGhost() {
+  ghost = null;
+  if (!G || busy || G.over) return;
+  const mode = luluMode();
+  if (mode === "act" && !sel) return;
+  if (mode === "mid" && feintArmed && !sel) return;
+  const real = G;
+  G = { f: JSON.parse(JSON.stringify(real.f)), stats: JSON.parse(JSON.stringify(real.stats)), turn: real.turn, frame: real.frame, log: [], history: [], reads: [] };
+  try {
+    const notes = [];
+    const push = (text, cls, extra) => { if (text && /lands|PARRIES|Burst|misses|feint|interrupted|Counter-hit/.test(text)) notes.push(text.replace(/^Frame \d+: /, "")); };
+    let yAssume = "", yEng = !free("yeti");
+    if (free("yeti")) {
+      startAct("yeti", HOLD, 1); yAssume = "stands still";
+    } else if (stunned("yeti")) yAssume = "in hitstun";
+    if (mode === "mid" && feintArmed && sel) endAct("lulu", "feint");
+    if (mode === "act" || (mode === "mid" && feintArmed && sel)) startAct("lulu", sel.s, sel.p);
+    else if (sel && sel.s.burst) startAct("lulu", sel.s, 0);
+    const hp0 = { lulu: G.f.lulu.hp, yeti: G.f.yeti.hp };
+    const frames = [ghostSnap(0)];
+    let lFree = null, yFree = null;
+    for (let c = 1; c <= TUNE.ghostMax; c++) {
+      segCur = c;
+      stepFrame(c, push);
+      const moving = Math.abs(G.f.lulu.vx) > 0.5 || G.f.lulu.y > 0;
+      if (lFree === null || (moving && c <= lFree + 40)) frames.push(ghostSnap(c));
+      if (G.f.yeti.hs > 0 || (G.f.yeti.act && G.f.yeti.act.sid !== "hold")) yEng = true;
+      if (lFree === null && free("lulu")) lFree = c;
+      if (yFree === null && yEng && free("yeti")) yFree = c;
+      if (G.f.lulu.hp <= 0 || G.f.yeti.hp <= 0) break;
+      if (lFree !== null && (yFree !== null || !yEng) && (!moving || c > lFree + 40)) break;
+      if (free("yeti")) startAct("yeti", HOLD, 1);
+    }
+    const dealt = hp0.yeti - G.f.yeti.hp, took = hp0.lulu - G.f.lulu.hp;
+    let adv = "";
+    if (lFree !== null && yFree !== null) { const d = yFree - lFree; adv = d === 0 ? "even" : `${d > 0 ? "+" : ""}${d}`; }
+    const bits = [];
+    if (lFree !== null) bits.push(`you're free f${lFree}`); else bits.push(`you're still stuck after ${TUNE.ghostMax}f`);
+    if (yFree !== null) bits.push(`Yeti f${yFree}${adv ? ` (${adv})` : ""}`);
+    const tags = [[/PARRIES/, "parry!"], [/^Counter-hit/, "counter-hit"], [/Burst blasts/, "burst"], [/blocked/, "blocked"]].filter(([re]) => notes.some(n => re.test(n))).map(t => t[1]);
+    const hitTxt = [...tags, dealt ? `deal ${dealt}` : "", took ? `take ${took}` : ""].filter(Boolean).join(", ");
+    ghost = { frames, t0: performance.now(), lFree, yFree, notes,
+      text: `Ghost${yAssume ? ` (if the Yeti ${yAssume})` : ""}: ${hitTxt ? hitTxt + " · " : ""}${bits.join(", ")}` };
+  } catch (err) { console.error(err); ghost = null; }
+  finally { G = real; segCur = 0; }
+}
+
 let replay = null;
 function startReplay() {
   if (!G.history.length || replay) return;
@@ -697,71 +1044,93 @@ function startReplay() {
 function playReplayTurn() {
   const h = G.history[replay.i];
   G.f = JSON.parse(JSON.stringify(h.start));
-  anim = { ev: h.ev, i: -1, t0: 0, from: G.f, final: h.final };
-  $("turnLbl").textContent = `REPLAY · TURN ${h.turn} / ${G.history.length}`;
-  nextEvent();
+  startAnim(h.frames, h.final, true);
 }
-function nextEvent() {
+function startAnim(frames, final, isReplay) { anim = { frames, final, i: -1, next: performance.now(), replay: isReplay, flash: null }; }
+// advances playback by real time; every game frame is shown, so a 5f attack comes out 5 frames in
+function animTick(now) {
+  const a = anim, ms = a.replay ? TUNE.replayFrameMs : TUNE.frameMs;
+  let n = 0;
+  while (anim === a && now >= a.next && n++ < 60) {
+    if (a.i >= a.frames.length - 1) { endAnim(); return G.f; }
+    a.i++;
+    const fr = a.frames[a.i];
+    G.f = fr.f;
+    let hs = 0;
+    const counter = fr.ev.some(x => (x.pops || []).some(p => p.t === "COUNTER"));
+    fr.ev.forEach(e => {
+      if (counter) e.counterFrame = true;
+      if (e.text && !a.replay) addLog(e.cls, e.text);
+      (e.pops || []).forEach(p => fx.push(Object.assign({ t0: now }, p)));
+      fxForEvent(e, fr.f);
+      if (e.spark) { hs = counter ? TUNE.hitstopCounter : TUNE.hitstop; a.flash = { k: e.box ? other(e.box.k) : null, until: now + 110 }; fx.push({ spark: true, x: e.spark.x, y: e.spark.y, t0: now }); }
+    });
+    if (hs) freezeUntil = now + hs;
+    a.next = Math.max(a.next, now - 100) + ms + hs + (a.i === a.frames.length - 1 ? (a.replay ? 150 : 300) : 0);
+    if (fr.ev.length || a.i % 3 === 0 || a.i === a.frames.length - 1) { hud(); if (!a.replay) renderLog(); }
+    $("turnLbl").textContent = a.replay ? `REPLAY · TURN ${G.history[replay.i].turn} / ${G.history.length} · F${fr.c}` : `TURN ${G.turn} · FRAME ${fr.c}`;
+  }
+  if (anim !== a) return G.f;
+  const cur = a.frames[Math.max(0, a.i)], nx = a.frames[Math.min(a.frames.length - 1, a.i + 1)];
+  if (now < freezeUntil) return cur.f;
+  const u = clamp(1 - (a.next - now) / ms, 0, 1), F = {};
+  KEYS.forEach(k => { const p = cur.f[k], q = nx.f[k]; F[k] = Object.assign({}, p, { x: p.x + (q.x - p.x) * u, y: p.y + (q.y - p.y) * u }); });
+  return F;
+}
+function endAnim() {
   const a = anim;
-  a.i++;
-  if (a.i >= a.ev.length) {
-    if (replay) {
-      replay.i++;
-      if (replay.i < G.history.length) return playReplayTurn();
-      G.f = replay.saveF; replay = null; anim = null; busy = false;
-      hud(); renderMoves();
-      $("endBox").hidden = false;
-      return;
-    }
-    G.f = JSON.parse(JSON.stringify(a.final));
-    anim = null; busy = false;
-    if (G.reads.length) G.reads[G.reads.length - 1].done = true;
-    if (G.f.lulu.hp <= 0 || G.f.yeti.hp <= 0) return finish();
-    G.turn++;
-    addLog("t", `Turn ${G.turn}`);
-    ui();
+  anim = null;
+  if (a.replay) {
+    replay.i++;
+    if (replay.i < G.history.length) return playReplayTurn();
+    G.f = replay.saveF; replay = null; busy = false;
+    hud(); renderMoves();
+    $("endBox").hidden = false;
     return;
   }
-  const e = a.ev[a.i];
-  a.from = JSON.parse(JSON.stringify(G.f));
-  a.to = e.f;
-  a.t0 = performance.now();
-  a.cur = e;
-  let hs = 0;
-  if (e.spark) {
-    const nx = a.ev[a.i + 1], counter = nx && (nx.pops || []).some(p => p.t === "COUNTER");
-    hs = counter ? TUNE.hitstopCounter : TUNE.hitstop;
-    freezeUntil = a.t0 + hs; a.t0 += hs;
-  }
-  if (e.text && !replay) addLog(e.cls, e.text);
-  (e.pops || []).forEach(p => fx.push(Object.assign({ t0: performance.now() }, p)));
-  if (e.spark) fx.push({ spark: true, x: e.spark.x, y: e.spark.y, t0: performance.now() });
-  G.f = e.f;
-  hud(); if (replay) $("turnLbl").textContent = `REPLAY · TURN ${G.history[replay.i].turn} / ${G.history.length}`; else renderLog();
-  const ms = replay ? TUNE.replayMs : TUNE.eventMs;
-  setTimeout(nextEvent, hs + (e.text || (e.pops && e.pops.length) ? ms : (replay ? 10 : 30)));
+  G.f = JSON.parse(JSON.stringify(a.final));
+  busy = false;
+  if (G.reads.length) G.reads[G.reads.length - 1].done = true;
+  if (G.f.lulu.hp <= 0 || G.f.yeti.hp <= 0) return finish();
+  G.turn++;
+  addLog("t", `Turn ${G.turn}${stunned("lulu") ? " · you're in hitstun" : G.f.yeti.act ? " · Yeti mid-move" : ""}`);
+  ui();
 }
 
 function finish() {
   G.over = true;
   const a = G.f.lulu.hp, m = G.f.yeti.hp;
   $("endTitle").textContent = a <= 0 && m <= 0 ? "Draw" : m <= 0 ? "You read it" : "Yeti wins";
-  $("endText").textContent = m <= 0 && a > 0 ? `The Yeti falls in ${G.turn} turns and the path is open. Winning resets your Sanity to 0.` : a <= 0 && m > 0 ? "It read you first. Click the Yeti before each turn to see what its passive allows." : "You both drop at once.";
+  $("endText").textContent = m <= 0 && a > 0 ? `The Yeti falls in ${G.turn} turns and the path is open. Winning resets your Sanity to 0.` : a <= 0 && m > 0 ? "It read you first. Use Wait to watch what it commits to, and check the ghost before you lock in." : "You both drop at once.";
   if (m <= 0 && a > 0) G.f.lulu.san = 0;
   const S = G.stats;
-  const rows = [["Turns", G.turn], ["Your damage", S.dmg.lulu], ["Yeti's damage", S.dmg.yeti], ["Counter-hits you landed", S.counters.lulu], ["Counter-hits you took", S.counters.yeti], ["Hits you blocked", S.guarded.lulu], ["Your best combo", S.bestCombo.lulu], ["Times you were Scared", S.scared.lulu], ["Times the Yeti was Scared", S.scared.yeti]];
+  const rows = [["Turns", G.turn], ["Your damage", S.dmg.lulu], ["Yeti's damage", S.dmg.yeti], ["Counter-hits you landed", S.counters.lulu], ["Counter-hits you took", S.counters.yeti], ["Hits you blocked", S.guarded.lulu], ["Your parries", S.parries.lulu], ["Yeti's catches", S.parries.yeti], ["Your feints / Yeti's", `${S.feints.lulu} / ${S.feints.yeti}`], ["Your bursts / Yeti's", `${S.bursts.lulu} / ${S.bursts.yeti}`], ["Your best combo", S.bestCombo.lulu], ["Times you were Scared", S.scared.lulu], ["Times the Yeti was Scared", S.scared.yeti]];
   $("endStats").innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("");
   ui();
   $("endBox").hidden = false;
 }
 
+function stateLine() {
+  const y = G.f.yeti, l = G.f.lulu, out = [];
+  if (l.hs > 0) out.push(`You: ${l.stun ? "hitstun" : "blockstun"} ${l.hs}f`);
+  else if (l.act) out.push(`You: ${actSk(l.act).name}, free in ${l.act.end - l.act.t}f`);
+  if (y.act) {
+    const a = y.act, s = actSk(a);
+    if (isAtk(s) && a.t < a.st) out.push(`Yeti: ${s.name} comes out in ${a.st - a.t}f`);
+    else if (s.guard && a.t < a.st + a.ac) out.push(`Yeti: ${s.name} up for ${a.st + a.ac - a.t}f`);
+    else if (s.parry && a.t <= a.p + TUNE.parryWin) out.push(`Yeti: Catch window in ${Math.max(0, a.p - TUNE.parryWin - a.t)}–${a.p + TUNE.parryWin - a.t}f`);
+    else out.push(`Yeti: ${s.name}, free in ${a.end - a.t}f`);
+  } else if (y.hs > 0) out.push(`Yeti: ${y.stun ? "hitstun" : "blockstun"} ${y.hs}f`);
+  else if (!G.over) out.push("Yeti picks at the same time as you");
+  return out.join(" · ");
+}
 function hud() {
   KEYS.forEach(k => {
     const f = G.f[k], e = emo(k), el = $(k === "lulu" ? "hudA" : "hudM");
-    const pct = f.hp / TUNE.hp * 100;
+    const pct = f.hp / TUNE.hp * 100, bp = Math.round(f.burst / TUNE.burstMax * 100);
     el.innerHTML = `<div class="nm" data-k="${k}">${NAMES[k].name} · ${e.name}</div>
       <div class="bar ${k}"><b style="width:${pct}%"></b><i style="width:${pct}%"></i></div>
-      <div class="row"><span>HP ${f.hp}</span><span>SAN ${f.san > 0 ? "+" : ""}${f.san}</span><span class="lt">${Array.from({ length: TUNE.lightMax }, (_, i) => `<span class="${i < f.light ? "on" : ""}"></span>`).join("")}</span>${f.stag ? "<span>STAGGER</span>" : ""}${f.chill ? "<span class='ch'>CHILLED</span>" : ""}${f.combo ? `<span>${f.combo} HITS</span>` : ""}</div>`;
+      <div class="row"><span>HP ${f.hp}</span><span>SAN ${f.san > 0 ? "+" : ""}${f.san}</span><span class="lt">${Array.from({ length: TUNE.lightMax }, (_, i) => `<span class="${i < f.light ? "on" : ""}"></span>`).join("")}</span><span class="bu ${bp >= 100 ? "on" : ""}" title="Burst ${bp}%"><i style="width:${bp}%"></i></span>${f.hs > 0 ? `<span class="hs">${f.stun ? "HITSTUN" : "BLOCK"} ${f.hs}</span>` : ""}${f.chill ? "<span class='ch'>CHILLED</span>" : ""}${f.combo ? `<span>${f.combo} HITS</span>` : ""}</div>`;
     el.querySelector(".nm").addEventListener("click", () => openInsp(k));
   });
   $("turnLbl").textContent = G.over ? "FIGHT OVER" : `TURN ${G.turn}`;
@@ -775,28 +1144,42 @@ function ui() { hud(); renderLog(); renderMoves(); renderEnemy(); renderReads();
 
 function metaOf(k, s) {
   const st = startOf(k, s), c = cost(k, s);
+  if (s.wait) return `${(s.range || [1, 1])[0]}-${(s.range || [1, 30])[1]}f`;
+  if (s.parry) return `±${TUNE.parryWin}f window`;
+  if (s.burst) return `1f · invincible · full gauge`;
+  if (s.feint) return `cancel · ${TUNE.feintCd}-turn recharge`;
   if (s.type === "move") return `${st}f`;
   if (s.guard) return `${st}f · GUARD${c ? " · " + c + " LIGHT" : ""}`;
-  return `${st}f · ${hitsOf(k, s)}×${s.dmg}${c ? " · " + c + " LIGHT" : ""}`;
+  return `${st}f · ${hitsOf(k, s)}×${s.dmg} · +${s.adv || 2}${c ? " · " + c + " LIGHT" : ""}`;
 }
 function skillCard(k, s) {
   const why = blocked(k, s), st = startOf(k, s), h = hitsOf(k, s), c = cost(k, s);
   const typ = s.type === "move" ? "Movement" : s.type === "atk" ? "Attack" : "Special";
-  const kv = [`<span>Startup <b>${st}f</b></span>`];
-  if (s.ac) kv.push(`<span>Active <b>${s.ac}f</b></span>`);
-  kv.push(`<span>Recovery <b>${s.rc}f</b></span>`);
-  if (s.type === "move") { const [lo, hi] = s.range || [0, 0]; kv.push(`<span>Range <b>${lo < 0 ? "back " + -lo : ""}${lo < 0 && hi > 0 ? " / " : ""}${hi > 0 ? "forward " + hi : ""}</b></span>`); }
-  else if (!s.guard) kv.push(`<span>Hits <b>${h}×${s.dmg} = ${h * s.dmg}</b></span>`, `<span>Reach <b>${s.box[0] < 0 ? "behind too, " : ""}${Math.max(Math.abs(s.box[0]), Math.abs(s.box[1]))}</b></span>`);
-  else kv.push(`<span>Guards frames <b>${st} to ${st + s.ac}</b></span>`);
+  const kv = [];
+  if (s.feint) kv.push(`<span>Recharge <b>${TUNE.feintCd} turns</b></span>`, `<span>Now <b>${G.f[k].fcd > 0 ? G.f[k].fcd + " left" : "ready"}</b></span>`);
+  else if (s.wait) kv.push(`<span>Length <b>you pick, ${s.range[0]}-${s.range[1]}f</b></span>`);
+  else if (s.parry) kv.push(`<span>Window <b>your frame ±${TUNE.parryWin}</b></span>`, `<span>Recovery <b>${s.rc}f</b></span>`);
+  else {
+    kv.push(`<span>Startup <b>${st}f</b></span>`);
+    if (s.ac) kv.push(`<span>Active <b>${s.ac}f</b></span>`);
+    kv.push(`<span>Recovery <b>${s.rc}f</b></span>`);
+  }
+  if (s.type === "move" && !s.wait) { const [lo, hi] = s.range || [0, 0]; kv.push(`<span>Range <b>${lo < 0 ? "back " + -lo : ""}${lo < 0 && hi > 0 ? " / " : ""}${hi > 0 ? "forward " + hi : ""}</b></span>`); }
+  else if (s.burst) kv.push(`<span>Knockback <b>${TUNE.burstKnock}</b></span>`, `<span>Hitstun <b>${TUNE.burstHs}f</b></span>`);
+  else if (isAtk(s)) kv.push(`<span>Hits <b>${h}×${s.dmg} = ${h * s.dmg}</b></span>`, `<span>On hit <b>+${s.adv || 2}</b></span>`, `<span>Reach <b>${s.box[0] < 0 ? "behind too, " : ""}${Math.max(Math.abs(s.box[0]), Math.abs(s.box[1]))}</b></span>`);
+  else if (s.guard) kv.push(`<span>Guards frames <b>${st} to ${st + s.ac}</b></span>`);
+  if (s.feint) return `<div class="card ${k}"><h5>${s.name} <small style="color:#8094ad;font-family:VT323;font-size:16px;text-transform:none">Special</small></h5><div class="kv">${kv.join("")}</div><div>${s.ds}</div>${why ? `<div class="no">Right now: ${why}</div>` : ""}</div>`;
   kv.push(`<span>Light <b>${c}</b></span>`);
   const fl = [];
   if (s.ground) fl.push("ground only"); if (s.air) fl.push("air only"); if (s.jump) fl.push("jumps"); if (s.proj) fl.push("projectile, misses up close");
-  if (s.chill) fl.push("Chills on hit"); if (s.san) fl.push(`-${s.san} Sanity on hit`); if (s.guard) fl.push("half damage, no counter-hit");
+  if (s.launch) fl.push("launches"); if (s.chill) fl.push("Chills on hit"); if (s.san) fl.push(`-${s.san} Sanity on hit`); if (s.guard) fl.push("half damage, no counter-hit");
+  if ((isAtk(s) || s.type === "spc") && !s.burst && !s.feint) fl.push("can be Feint-cancelled");
   return `<div class="card ${k}"><h5>${s.name} <small style="color:#8094ad;font-family:VT323;font-size:16px;text-transform:none">${typ}</small></h5><div class="kv">${kv.join("")}</div><div>${s.ds}</div>${fl.length ? `<div class="kv"><span>${fl.join(" · ")}</span></div>` : ""}${why ? `<div class="no">Right now: blocked by ${why}</div>` : ""}</div>`;
 }
 function setPeek(k, s) {
   peek = peek && peek.k === k && peek.s === s ? null : { k, s };
   renderEnemy();
+  updateGhost(); showMid();
   if (inspKey) renderInsp();
 }
 const ICONS = {
@@ -804,6 +1187,8 @@ const ICONS = {
   slide: "M3 7l6 5-6 5M11 7l6 5-6 5M20 6v12",
   leap: "M12 20V5M6 11l6-6 6 6",
   hook: "M6 21V9a6 6 0 0 1 12 0v3M14 9l4 4 4-4",
+  wait: "M12 3a9 9 0 1 0 0.01 0M12 7v5l4 3",
+  hold: "M12 3a9 9 0 1 0 0.01 0M12 7v5l4 3",
   jab: "M3 12h13M13 7l7 5-7 5",
   swing: "M4 5q15 1 15 14M14 19h6v-6",
   rise: "M6 21q0-13 12-15M12 4h7v7",
@@ -811,6 +1196,8 @@ const ICONS = {
   icicle: "M12 2l5 9-5 11-5-11z",
   drop: "M12 3v14M6 12l6 7 6-7M5 22h14",
   wall: "M4 4h16v16H4zM4 12h16M12 4v8M8 12v8M16 12v8",
+  parry: "M4 20L20 4M4 4l6 6M14 14l6 6M3 11h5M16 3v5",
+  burst: "M12 2v6M12 16v6M2 12h6M16 12h6M5 5l4 4M15 15l4 4M5 19l4-4M15 9l4-4",
   avalanche: "M2 21l7-14 7 14zM12 21l5-9 5 9z",
   lumber: "M5 18h6v3H5zM13 11h6v3h-6zM6 12l3-6M14 6l3 3",
   charge: "M3 8h6M3 16h6M6 12h9M13 7l6 5-6 5",
@@ -823,10 +1210,12 @@ const ICONS = {
   flop: "M12 3v12M5 12l7 8 7-8M4 22h16",
   roar: "M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M12 12m-6 0a6 6 0 1 0 12 0a6 6 0 1 0-12 0M12 12m-10 0a10 10 0 1 0 20 0",
   armor: "M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z",
+  feint: "M3 12h7M7 8l3 4-3 4M14 5v14M19 5v14",
+  catch: "M6 21V10M10 21V5M14 21V5M18 21V9M6 14h12",
   blizzard: "M12 3v18M4 7l16 10M4 17l16-10"
 };
 const iconSvg = id => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square" stroke-linejoin="miter" shape-rendering="crispEdges"><path d="${ICONS[id] || "M4 12h16"}"/></svg>`;
-const catOf = s => s.guard ? "Defense" : s.type === "move" ? "Movement" : s.type === "atk" ? "Attack" : "Special";
+const catOf = s => s.feint ? "Special" : s.guard || s.parry || s.burst ? "Defense" : s.type === "move" ? "Movement" : s.type === "atk" ? "Attack" : "Special";
 const CAT_L = ["Defense", "Special", "Attack", "Movement"];
 const CAT_R = ["Movement", "Attack", "Special", "Defense"];
 let hov = null;
@@ -834,12 +1223,12 @@ function groupHtml(k, cats, activeS) {
   const list = SKILLS[k];
   return cats.map(cat => {
     const items = list.filter(s => catOf(s) === cat);
-    if (cat === "Movement" && k === "lulu" && list.every(s => blocked("lulu", s))) items.push(HOLD);
+    if (cat === "Movement" && k === "lulu" && free("lulu") && list.every(s => blocked("lulu", s))) items.push(HOLD);
     if (!items.length) return "";
     const act = activeS && items.includes(activeS);
     return `<div class="grp"><div class="gl ${act ? "on" : ""}">${act ? activeS.name : cat}</div><div class="icons">${items.map(s => {
       const why = blocked(k, s);
-      return `<button type="button" class="ic c-${cat} ${activeS === s ? "sel" : ""} ${why ? "off" : ""}" data-k="${k}" data-id="${s.id}" title="${s.name}${why ? " (" + why + ")" : ""}">${iconSvg(s.id)}</button>`;
+      return `<button type="button" class="ic c-${cat} ${activeS === s || (s.feint && k === "lulu" && feintArmed) ? "sel" : ""} ${why ? "off" : ""}" data-k="${k}" data-id="${s.id}" title="${s.name}${why ? " (" + why + ")" : ""}">${iconSvg(s.id)}</button>`;
     }).join("")}</div></div>`;
   }).join("");
 }
@@ -857,12 +1246,26 @@ function wireIcons(root, k, onClick) {
 }
 function showMid() {
   const s = hov && hov.k === "lulu" ? hov.s : sel ? sel.s : null;
+  $("stateTxt").textContent = busy || !G ? "" : stateLine();
+  $("ghostTxt").textContent = !busy && ghost ? ghost.text : "";
   if (busy) { $("selname").textContent = ""; $("desc").textContent = "Playing out..."; return; }
   if (G.over) { $("selname").textContent = ""; $("desc").textContent = ""; return; }
-  if (!s) { $("selname").textContent = "Pick a skill"; $("desc").textContent = "Hover a skill to read it. Click a Yeti skill to see what it can do."; return; }
+  if (!s) {
+    const m = luluMode();
+    if (m === "stun") {
+      $("selname").textContent = "In hitstun";
+      $("desc").textContent = "Burst out of the combo, or Hold and take it.";
+    } else if (m === "mid") {
+      const a = G.f.lulu.act;
+      $("selname").textContent = feintArmed ? "Feint into…" : `${actSk(a).name} is still going`;
+      $("desc").textContent = feintArmed ? `Pick the skill to cancel ${actSk(a).name} into.` : `The Yeti gets to act now. Continue, or Feint to cancel ${actSk(a).name} (free in ${a.end - a.t}f otherwise).`;
+    } else { $("selname").textContent = "Pick a skill"; $("desc").textContent = "Hover a skill to read it. Click a Yeti skill to read what it does."; }
+    return;
+  }
   $("selname").textContent = s.name;
   $("desc").textContent = `${metaOf("lulu", s)} · ${skillInfo("lulu", s)}`;
 }
+
 function renderEnemy() {
   const el = $("eskills");
   el.innerHTML = groupHtml("yeti", CAT_R, peek && peek.k === "yeti" ? peek.s : null);
@@ -870,28 +1273,34 @@ function renderEnemy() {
   $("epeek").innerHTML = peek && peek.k === "yeti" ? skillCard("yeti", peek.s) : "";
 }
 function renderMoves() {
-  const el = $("groups");
+  const el = $("groups"), mode = luluMode();
   el.innerHTML = groupHtml("lulu", CAT_L, sel ? sel.s : null);
   wireIcons(el, "lulu", s => {
     if (busy || G.over) return;
     const why = blocked("lulu", s);
     if (why) { $("desc").textContent = `${s.name}: ${why}`; return; }
-    const [lo, hi] = paramRange("lulu", s);
-    sel = { s, p: clamp(s.def || 0, lo, hi) };
+    if (s.feint) { feintArmed = !feintArmed; sel = null; renderMoves(); return; }
+    if (sel && sel.s === s && s.burst) sel = null;
+    else { const [lo, hi] = paramRange("lulu", s); sel = { s, p: clamp(s.def || 0, lo, hi) }; }
     renderMoves();
   });
   const p = $("param");
-  if (sel && sel.s.type === "move" && sel.s !== HOLD) {
-    const [lo, hi] = paramRange("lulu", sel.s);
-    p.innerHTML = `<div class="val" id="rv"></div><input type="range" id="rng" min="${lo}" max="${hi}" step="10" value="${sel.p}">`;
+  const hasParam = sel && sel.s !== HOLD && (sel.s.parry || (sel.s.type === "move"));
+  if (hasParam) {
+    const [lo, hi] = paramRange("lulu", sel.s), stp = sel.s.wait || sel.s.parry ? 1 : 10;
+    p.innerHTML = `<div class="val" id="rv"></div><input type="range" id="rng" min="${lo}" max="${hi}" step="${stp}" value="${sel.p}">`;
     const r = $("rng");
-    const show = () => $("rv").textContent = `${sel.p > 0 ? "toward " + sel.p : sel.p < 0 ? "back " + -sel.p : "in place"}`;
+    const show = () => $("rv").textContent = sel.s.wait ? `wait ${sel.p} frames` : sel.s.parry ? `parry on frame ${sel.p}` : `${sel.p > 0 ? "toward " + sel.p : sel.p < 0 ? "back " + -sel.p : "in place"}`;
     show();
-    r.addEventListener("input", () => { sel.p = +r.value; show(); });
+    r.addEventListener("input", () => { sel.p = +r.value; show(); updateGhost(); showMid(); });
   } else p.innerHTML = "";
+  $("extra").innerHTML = "";
   $("mpeek").innerHTML = sel && sel.s !== HOLD ? skillCard("lulu", sel.s) : "";
+  updateGhost();
   showMid();
-  $("goBtn").disabled = busy || G.over || !sel;
+  const go = $("goBtn");
+  go.disabled = busy || G.over || (mode === "act" && !sel) || (mode === "mid" && feintArmed && !sel);
+  go.textContent = mode === "stun" ? (sel && sel.s.burst ? "Burst!" : "Hold") : mode === "mid" ? (feintArmed ? (sel ? `Feint → ${sel.s.name}` : "Pick a skill") : "Continue") : "Lock in";
 }
 
 function openInsp(k) { inspKey = k; renderInsp(); }
@@ -903,7 +1312,7 @@ function renderInsp() {
   const ticks = EMOS[k].slice(1).map(x => `<div class="tk" style="left:${(x.min - TUNE.sanMin) / (TUNE.sanMax - TUNE.sanMin) * 100}%"></div>`).join("");
   el.innerHTML = `<button class="x" type="button" aria-label="Close">×</button>
     <h2>${NAMES[k].name}<small>${NAMES[k].title}</small></h2>
-    <div class="stt"><span>HP ${f.hp}/${TUNE.hp}</span><span>Light ${f.light}/${TUNE.lightMax}</span>${f.stag ? `<span>Staggered +${TUNE.stagger} frames</span>` : ""}${f.chill ? `<span>Chilled +${TUNE.chill} frames</span>` : ""}${f.y > 0 ? "<span>Airborne</span>" : ""}</div>
+    <div class="stt"><span>HP ${f.hp}/${TUNE.hp}</span><span>Light ${f.light}/${TUNE.lightMax} (+1 every ${TUNE.lightEvery}f)</span><span>Burst ${Math.round(f.burst)}%</span><span>Feint ${f.fcd > 0 ? "in " + f.fcd + " turns" : "ready"}</span>${f.hs > 0 ? `<span>${f.stun ? "Hitstun" : "Blockstun"} ${f.hs}f</span>` : ""}${f.chill ? `<span>Chilled +${TUNE.chill} frames</span>` : ""}${f.y > 0 ? "<span>Airborne</span>" : ""}${f.act ? `<span>Doing ${actSk(f.act).name}</span>` : ""}</div>
     <div class="now"><div class="k">Emotion now · Sanity ${f.san > 0 ? "+" : ""}${f.san}</div><div class="e">${e.name}</div><div class="p">${e.ps}</div></div>
     <div class="san">${ticks}<div class="m" style="left:calc(${pct}% - 1px)"></div></div>
     <h4>Emotions</h4>
@@ -917,12 +1326,12 @@ function renderInsp() {
   el.querySelector(".x").addEventListener("click", closeInsp);
   el.querySelectorAll(".sk.click").forEach(r => r.addEventListener("click", () => setPeek(k, SKILLS[k].find(x => x.id === r.dataset.id))));
 }
-
 const PX = 4, LW = 300, LH = 130, FL = 114;
 const C = { bg: "#050608", navy: "#1f2b55", orange: "#ff8a2a", ice: "#8fe3ff", ice2: "#d9f6ff", gold: "#ffd23a", white: "#ffffff" };
 const low = document.createElement("canvas"); low.width = LW; low.height = LH;
 const lc = low.getContext("2d");
-const lx = x => Math.round(x / PX);
+let camX = (TUNE.W - TUNE.VIEW) / 2;
+const lx = x => Math.round((x - camX) / PX);
 const ly = y => FL - Math.round(y / PX);
 
 const FONT = {
@@ -1035,9 +1444,10 @@ function iceGlitter(k, f, now) {
   }
 }
 
-let bgCache = null;
-function background() {
-  if (bgCache) return bgCache;
+let skyCache = null, mtnCache = null;
+const PARA = 0.35;
+function sky() {
+  if (skyCache) return skyCache;
   const b = document.createElement("canvas"); b.width = LW; b.height = LH;
   const c = b.getContext("2d");
   c.fillStyle = C.bg; c.fillRect(0, 0, LW, LH);
@@ -1045,23 +1455,43 @@ function background() {
   [[12, 6], [40, 14], [77, 4], [118, 18], [160, 8], [204, 15], [236, 5], [190, 30], [60, 32], [270, 12], [290, 26]].forEach(([x, y]) => c.fillRect(x, y, 1, 1));
   c.fillStyle = "#13305a";
   for (let a = 0; a < Math.PI; a += 0.004) { const x = Math.round(80 + Math.cos(a + Math.PI) * 140), y = Math.round(140 - Math.sin(a) * 130); if (y >= 0 && y < FL && x >= 0 && x < LW) c.fillRect(x, y, 1, 1); }
-  const sx = LW / 250, sy = FL / 92;
-  const ridge = (pts, fill, edge) => {
-    pts = pts.map(([x, y]) => [x * sx, y * sy]);
-    for (let x = 0; x < LW; x++) {
-      let y = FL;
-      for (let i = 0; i < pts.length - 1; i++) { const [x0, y0] = pts[i], [x1, y1] = pts[i + 1]; if (x >= x0 && x <= x1) y = Math.round(y0 + (y1 - y0) * (x - x0) / (x1 - x0)); }
-      c.fillStyle = fill; c.fillRect(x, y, 1, FL - y);
-      c.fillStyle = edge; c.fillRect(x, y, 1, 1);
-    }
-  };
-  ridge([[0, 60], [30, 38], [52, 54], [86, 26], [118, 50], [150, 34], [176, 52], [212, 22], [250, 48]], "#0a1222", "#2c4a78");
-  ridge([[0, 78], [24, 66], [60, 80], [96, 62], [140, 82], [178, 68], [214, 80], [250, 70]], "#070c16", "#1f3658");
-  c.fillStyle = "#e9f3ff"; c.fillRect(0, FL, LW, 1);
-  for (let x = 0; x < LW; x += 25) c.fillRect(x, FL + 1, 1, 4);
-  c.fillStyle = "#4a7fb0";
-  for (let x = 3; x < LW; x += 7) c.fillRect(x, FL + 2, 2, 1);
-  return bgCache = b;
+  return skyCache = b;
+}
+function mountains() {
+  if (mtnCache) return mtnCache;
+  const w = LW + Math.ceil((TUNE.W - TUNE.VIEW) / PX * PARA) + 4;
+  const b = document.createElement("canvas"); b.width = w; b.height = LH;
+  const c = b.getContext("2d");
+  const ridge = (hf, fill, edge) => { for (let x = 0; x < w; x++) { const y = Math.round(FL - hf(x)); c.fillStyle = fill; c.fillRect(x, y, 1, FL - y); c.fillStyle = edge; c.fillRect(x, y, 1, 1); } };
+  ridge(x => 60 + 16 * Math.sin(x * 0.031) + 11 * Math.sin(x * 0.083 + 1.3) + 6 * Math.abs(Math.sin(x * 0.17 + 2)), "#0a1222", "#2c4a78");
+  ridge(x => 24 + 8 * Math.sin(x * 0.047 + 0.7) + 5 * Math.sin(x * 0.13 + 4) + 3 * Math.abs(Math.sin(x * 0.29)), "#070c16", "#1f3658");
+  return mtnCache = b;
+}
+function drawBackground() {
+  lc.drawImage(sky(), 0, 0);
+  lc.drawImage(mountains(), -Math.round(camX / PX * PARA), 0);
+  // the path itself scrolls 1:1 so you can feel the speed
+  lc.fillStyle = "#e9f3ff"; lc.fillRect(0, FL, LW, 1);
+  for (let wx = Math.floor(camX / 100) * 100; wx <= camX + TUNE.VIEW + 100; wx += 100) lc.fillRect(lx(wx), FL + 1, 1, wx % 500 === 0 ? 7 : 4);
+  lc.fillStyle = "#4a7fb0";
+  for (let wx = Math.floor(camX / 28) * 28; wx <= camX + TUNE.VIEW + 28; wx += 28) lc.fillRect(lx(wx) + 1, FL + 2, 2, 1);
+  // ice walls at both ends of the path
+  [[TUNE.minX - BODY.lulu.hw - 4, -1], [TUNE.maxX + BODY.lulu.hw + 4, 1]].forEach(([wx, side]) => {
+    const sx = lx(wx);
+    if (sx < -12 || sx > LW + 12) return;
+    lc.fillStyle = "#0b1d33"; side < 0 ? lc.fillRect(0, 0, Math.max(0, sx), FL) : lc.fillRect(sx, 0, LW - sx, FL);
+    lc.fillStyle = "#8fe3ff"; lc.fillRect(sx, 8, 1, FL - 8);
+    lc.fillStyle = "#4a7fb0"; for (let y = 10; y < FL; y += 6) lc.fillRect(sx - side * 2, y, 1, 3);
+  });
+}
+let camT = camX;
+function updateCam(F) {
+  const L = F.lulu, Y = F.yeti, V = TUNE.VIEW;
+  let t = (L.x + Y.x) / 2 - V / 2;
+  t = clamp(t, L.x - V + 170, L.x - 170);
+  camT = clamp(t, 0, TUNE.W - V);
+  camX += (camT - camX) * (anim ? 0.22 : 0.12);
+  if (Math.abs(camT - camX) < 0.3) camX = camT;
 }
 
 const snow = Array.from({ length: 80 }, (_, i) => ({ x: (i * 37) % LW, y: (i * 53) % FL, s: 0.15 + ((i * 13) % 10) / 40 }));
@@ -1082,7 +1512,7 @@ const FX_FOR = {
   wall: [["shieldBlock", {}]], avalanche: [["frostNova", {}]], slide: [["snowflakeBurst", { small: true }]],
   swipe: [["clawSwipe", { pal: ORANGE_RAMP }]], slam: [["hammerSmash", { pal: ORANGE_RAMP }]], stomp: [["quake", { pal: SNOW_RAMP }]],
   boulder: [["boulder", { pal: SNOW_RAMP }]], hug: [["bluntHit", { pal: ORANGE_RAMP, at: "target" }]], flop: [["heavyLanding", { pal: SNOW_RAMP }]],
-  roar: [["groundSlam", { pal: ORANGE_RAMP }]], armor: [["shieldBlock", { pal: ORANGE_RAMP }]], blizzard: [["blizzardVortex", { stopAfter: 1.4, at: "mid" }]]
+  roar: [["groundSlam", { pal: ORANGE_RAMP }]], armor: [["shieldBlock", { pal: ORANGE_RAMP }]], blizzard: [["blizzardVortex", { stopAfter: 1.4, at: "mid" }]], burst: [["frostNova", {}]]
 };
 const fxFrame = PFX.createFrame(LW, LH);
 const fxImg = new ImageData(LW, LH);
@@ -1097,10 +1527,10 @@ function spawnFx(name, o) {
   live.push(rec);
   return rec;
 }
-function fxForEvent(e) {
+function fxForEvent(e, F) {
   const box = e.box;
   if (box) {
-    const k = box.k, f = anim.to[k], tgt = anim.to[other(k)], list = FX_FOR[box.sid] || [];
+    const k = box.k, f = F[k], tgt = F[other(k)], list = FX_FOR[box.sid] || [];
     const flip = box.dir < 0;
     list.forEach(([name, o]) => {
       const base = { x: lx(f.x), y: ly(f.y), flip, seed: (G.turn * 7 + name.length) % 97 };
@@ -1118,10 +1548,18 @@ function fxForEvent(e) {
       spawnFx(name, Object.assign(base, { stopAfter: o.stopAfter || 0 }));
     });
   }
+  if (e.parry) {
+    const pf = F[e.parry];
+    spawnFx("shieldBlock", { x: lx(pf.x), y: ly(pf.y), flip: pf.dir < 0, palette: e.parry === "lulu" ? PFX.PAL.ice : ORANGE_RAMP, seed: G.frame % 97 });
+  }
   if (e.spark) {
     const k = e.box ? other(e.box.k) : null;
-    const big = (e.pops || []).some(p => p.t === "COUNTER");
-    spawnFx(big ? "critHit" : "hitSpark", { x: lx(e.spark.x), y: ly(e.spark.y - BODY[k || "lulu"].h * 0.6), flip: e.box && e.box.dir < 0, palette: k === "lulu" ? ORANGE_RAMP : PFX.PAL.ice });
+    const big = e.counterFrame || (e.pops || []).some(p => p.t === "COUNTER");
+    // every clean hit from a normal attack (or any counter-hit) gets pixelfx's Critical Hit on the enemy
+    const atkSk = e.box ? SK(e.box.k, e.box.sid) : null, blockedHit = (e.pops || []).some(p => p.t === "BLOCKED");
+    const crit = big || (atkSk && atkSk.type === "atk" && !blockedHit);
+    spawnFx(crit ? "critHit" : "hitSpark", { x: lx(e.spark.x), y: ly(e.spark.y - BODY[k || "lulu"].h * 0.6), flip: e.box && e.box.dir < 0, palette: k === "lulu" ? ORANGE_RAMP : PFX.PAL.ice,
+      ...(crit ? { height: Math.round(BODY[k || "lulu"].h * 0.55 / PX), seed: (G.frame * 13 + (e.frame || 0)) % 97 } : {}) });
   }
 }
 function updateFx(now, F) {
@@ -1149,36 +1587,35 @@ function frame(now) {
   if (gLast && now >= freezeUntil) gclock += now - gLast;
   gLast = now;
   lc.imageSmoothingEnabled = false;
-  lc.drawImage(background(), 0, 0);
-  snow.forEach(p => { p.y += p.s; p.x -= p.s * 0.4; if (p.y > FL) p.y = 0; if (p.x < 0) p.x = LW; lc.fillStyle = p.s > 0.3 ? "#e9f3ff" : "#5d7ea8"; lc.fillRect(Math.round(p.x), Math.round(p.y), 1, 1); });
   let F = G.f, flashKey = null;
-  if (anim && anim.cur) {
-    if (lastEvent !== anim.cur) { lastEvent = anim.cur; fxForEvent(anim.cur); }
-    const t = Math.max(0, Math.min(1, (now - anim.t0) / (TUNE.eventMs * 0.55)));
-    const te = 1 - Math.pow(1 - t, 3);
-    F = {};
-    KEYS.forEach(k => { const a = anim.from[k], b = anim.to[k]; F[k] = Object.assign({}, b, { x: a.x + (b.x - a.x) * te, y: a.y + (b.y - a.y) * te }); });
-    (anim.cur.trail || []).forEach(k => { const a = anim.from[k], f = F[k]; lc.fillStyle = k === "lulu" ? "rgba(143,227,255,.55)" : "rgba(255,138,42,.5)"; for (let x = Math.min(lx(a.x), lx(f.x)); x <= Math.max(lx(a.x), lx(f.x)); x += 2) lc.fillRect(x, FL - 2 - (x % 3), 2, 1); });
-    if (anim.cur.spark && now - anim.t0 < 110) flashKey = anim.cur.box ? other(anim.cur.box.k) : null;
-  }
-  if (!anim && peek) {
+  if (anim) { F = animTick(now); if (anim && anim.flash && now < anim.flash.until) flashKey = anim.flash.k; }
+  updateCam(F);
+  drawBackground();
+  snow.forEach(p => { p.y += p.s; p.x -= p.s * 0.4; if (p.y > FL) p.y = 0; if (p.x < 0) p.x = LW; lc.fillStyle = p.s > 0.3 ? "#e9f3ff" : "#5d7ea8"; lc.fillRect(Math.round(p.x), Math.round(p.y), 1, 1); });
+  // speed lines behind anyone moving fast
+  KEYS.forEach(k => {
+    const f = F[k];
+    if (Math.abs(f.vx || 0) < 12) return;
+    const back = -Math.sign(f.vx), n = Math.min(4, Math.floor(Math.abs(f.vx) / 8));
+    lc.fillStyle = k === "lulu" ? "rgba(143,227,255,.6)" : "rgba(255,138,42,.55)";
+    for (let i = 0; i < n; i++) { const y = ly(f.y + 30 + i * 40), x0 = lx(f.x) + back * (BODY[k].hw / PX + 3 + (i % 2) * 3); lc.fillRect(Math.min(x0, x0 + back * 8), y, 8, 1); }
+  });
+  if (!anim && peek && !ghost) {
     const pf = G.f[peek.k], po = G.f[other(peek.k)], ps = peek.s, pc = peek.k === "yeti" ? C.orange : C.ice;
     if (ps.box) dashRect(boxOf(pf, po, ps), pc, peek.k === "yeti" ? "rgba(255,138,42,.16)" : "rgba(143,227,255,.14)");
     if (ps.pose) drawFighterLow(peek.k, Object.assign({}, pf, { pose: ps.pose }), 0.35);
   }
-  if (!anim && !G.over && sel) {
-    const s = sel.s, f = G.f.lulu, o = G.f.yeti;
-    if (s.type === "move") {
-      const { tx, ty } = targetOf("lulu", s, sel.p);
-      lc.fillStyle = "rgba(143,227,255,.7)";
-      for (let i = 1; i < 16; i += 2) { const t = i / 16, x = f.x + (tx - f.x) * t, y = f.y + (ty - f.y) * t + (s.jump ? Math.sin(t * Math.PI) * 70 : 0) + 60; lc.fillRect(lx(x), ly(y), 1, 1); }
-      drawFighterLow("lulu", Object.assign({}, f, { x: tx, y: ty, pose: s.pose || (ty > 0 ? "air" : "walk"), dir: tx < o.x ? 1 : -1 }), 0.35);
-    } else if (s.guard) {
-      drawFighterLow("lulu", Object.assign({}, f, { pose: s.pose }), 0.35);
-    } else {
-      dashRect(boxOf(f, o, s), C.ice, "rgba(143,227,255,.14)");
-      drawFighterLow("lulu", Object.assign({}, f, { pose: s.pose }), 0.35);
-    }
+  if (!anim && !G.over && ghost && ghost.frames.length) {
+    const n = ghost.frames.length, i = Math.floor(Math.max(0, now - ghost.t0) / TUNE.ghostMs) % (n + 14), g = ghost.frames[Math.min(n - 1, i)];
+    lc.fillStyle = "rgba(143,227,255,.45)";
+    for (let j = 1; j < n; j += 2) { const q = ghost.frames[j].lulu; lc.fillRect(lx(q.x), ly(q.y + 60), 1, 1); }
+    g.bx.forEach(b => dashRect(b.r, b.k === "yeti" ? C.orange : C.ice, b.k === "yeti" ? "rgba(255,138,42,.16)" : "rgba(143,227,255,.16)"));
+    KEYS.forEach(k => {
+      const q = g[k], f = G.f[k];
+      if (Math.abs(q.x - f.x) < 1 && Math.abs(q.y - f.y) < 1 && q.pose === f.pose && !q.hs) return;
+      drawFighterLow(k, Object.assign({}, f, q), k === "lulu" ? 0.42 : 0.3);
+    });
+    pixText(lc, `F${g.c}${ghost.lFree !== null && g.c >= ghost.lFree ? " FREE" : ""}`, lx(g.lulu.x), ly(g.lulu.y + BODY.lulu.h) - 16, C.ice, true);
   }
   ["yeti", "lulu"].forEach(k => {
     const f = F[k];
@@ -1187,12 +1624,25 @@ function frame(now) {
     if (f.chill) iceGlitter(k, f, now);
     const e = emo(k, f.san);
     pixText(lc, e.name, lx(f.x), FL + 7, e.extreme ? C.gold : (k === "lulu" ? C.ice : C.orange), true);
+    if (!anim && !G.over && (f.act || f.hs > 0)) {
+      const a = f.act, s = a && actSk(a);
+      const lab = f.hs > 0 ? `${f.stun ? "STUN" : "BLOCK"} ${f.hs}` : isAtk(s) && a.t < a.st ? `${s.name} ${a.st - a.t}F` : `${s.name} +${a.end - a.t}F`;
+      pixText(lc, lab, lx(f.x), ly(f.y + BODY[k].h) - 9, f.hs > 0 ? C.gold : (k === "lulu" ? C.ice : C.orange), true);
+    }
     if (!anim && hover === k) {
       const top = ly(f.y + BODY[k].h) - 10 - Math.round(Math.sin(now / 150));
       lc.fillStyle = C.gold;
       for (let i = 0; i < 3; i++) lc.fillRect(lx(f.x) - 2 + i, top + i, 5 - i * 2, 1);
       pixText(lc, "READ", lx(f.x), top - 7, C.gold, true);
     }
+  });
+  KEYS.forEach(k => {
+    const f = F[k], sx = lx(f.x);
+    if (sx >= 0 && sx <= LW) return;
+    const left = sx < 0, x = left ? 3 : LW - 4, y = ly(f.y + 100);
+    lc.fillStyle = k === "lulu" ? C.ice : C.orange;
+    for (let i = 0; i < 4; i++) lc.fillRect(left ? x + i : x - i, y - 3 + i, 1, 7 - i * 2);
+    pixText(lc, `${NAMES[k].name} ${Math.round(Math.abs(f.x - F[other(k)].x))}`, left ? x + 22 : x - 22, y - 2, k === "lulu" ? C.ice : C.orange, true);
   });
   updateFx(now, F);
   lc.drawImage(fxCanvas, 0, 0);
@@ -1210,7 +1660,7 @@ function frame(now) {
 
 function pickAt(ev) {
   const r = cv.getBoundingClientRect();
-  const x = (ev.clientX - r.left) * cv.width / r.width, y = (ev.clientY - r.top) * cv.height / r.height;
+  const x = (ev.clientX - r.left) * cv.width / r.width + camX, y = (ev.clientY - r.top) * cv.height / r.height;
   const wy = TUNE.FLOOR - y;
   for (const k of KEYS) {
     const h = hurt(G.f[k]);
@@ -1223,7 +1673,7 @@ cv.addEventListener("mouseleave", () => { hover = null; });
 cv.addEventListener("click", ev => { const k = pickAt(ev); if (k) { if (inspKey === k) closeInsp(); else openInsp(k); } else closeInsp(); });
 
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape") { closeInsp(); peek = null; renderEnemy(); if (!busy) { sel = null; renderMoves(); } }
+  if (e.key === "Escape") { closeInsp(); peek = null; renderEnemy(); if (!busy) { sel = null; feintArmed = false; renderMoves(); } }
   if (busy || G.over || !$("intro").hidden) return;
   if (e.key === "Enter") commit();
 });
